@@ -61,7 +61,7 @@ function buildImagePath(basePath: string, filename: string): string {
   if (isBrowserImageBasePath(basePath)) {
     const imageId = browserImageIdFromBasePath(basePath)
     if (imageId) {
-      return `/image/local/${encodeURIComponent(imageId)}/${encodeURIComponent(filename)}`
+      return `/image/local/${encodeURIComponent(imageId)}`
     }
   }
 
@@ -78,7 +78,7 @@ function buildImagePath(basePath: string, filename: string): string {
 
 function parseImagePath(
   pathname: string,
-): { kind: 'home' } | { kind: 'image'; basePath: string; filename: string } | null {
+): { kind: 'home' } | { kind: 'local-image'; basePath: string } | { kind: 'image'; basePath: string; filename: string } | null {
   if (pathname === '/' || pathname === '') {
     return { kind: 'home' }
   }
@@ -89,11 +89,10 @@ function parseImagePath(
   }
 
   try {
-    if (parts[1] === 'local' && parts.length >= 4) {
+    if (parts[1] === 'local' && parts.length >= 3) {
       return {
-        kind: 'image',
+        kind: 'local-image',
         basePath: browserImageBasePath(decodeURIComponent(parts[2]!)),
-        filename: decodeURIComponent(parts[3]!),
       }
     }
 
@@ -439,11 +438,8 @@ export default function App() {
       return
     }
 
-    const matchingRecent = readRecentImages().find(
-      (record) => record.filename === route.filename && record.basePath === route.basePath,
-    )
-
-    if (isBrowserImageBasePath(route.basePath)) {
+    if (route.kind === 'local-image') {
+      const matchingRecent = readRecentImages().find((record) => record.basePath === route.basePath)
       void getBrowserImageFromBasePath(route.basePath)
         .then((file) => {
           if (!file) {
@@ -451,7 +447,7 @@ export default function App() {
             setNotice('That saved image is no longer available in this browser.')
             return
           }
-          loadImageFromBlob(file, route.filename, route.basePath, matchingRecent?.displayName)
+          loadImageFromBlob(file, file.name, route.basePath, matchingRecent?.displayName)
         })
         .catch(() => {
           navigateHome(true)
@@ -459,6 +455,10 @@ export default function App() {
         })
       return
     }
+
+    const matchingRecent = readRecentImages().find(
+      (record) => record.filename === route.filename && record.basePath === route.basePath,
+    )
 
     loadImageFromUrl(`${route.basePath}${route.filename}`, route.filename, route.basePath, matchingRecent?.displayName)
   }, [loadImageFromBlob, loadImageFromUrl, navigateHome, vp])
@@ -505,11 +505,8 @@ export default function App() {
         return
       }
 
-      const matchingRecent = readRecentImages().find(
-        (record) => record.filename === route.filename && record.basePath === route.basePath,
-      )
-
-      if (isBrowserImageBasePath(route.basePath)) {
+      if (route.kind === 'local-image') {
+        const matchingRecent = readRecentImages().find((record) => record.basePath === route.basePath)
         void getBrowserImageFromBasePath(route.basePath)
           .then((file) => {
             if (!file) {
@@ -518,7 +515,7 @@ export default function App() {
               dispatch({ type: 'RESET_WORKSPACE' })
               return
             }
-            loadImageFromBlob(file, route.filename, route.basePath, matchingRecent?.displayName)
+            loadImageFromBlob(file, file.name, route.basePath, matchingRecent?.displayName)
           })
           .catch(() => {
             navigateHome(true)
@@ -527,6 +524,10 @@ export default function App() {
           })
         return
       }
+
+      const matchingRecent = readRecentImages().find(
+        (record) => record.filename === route.filename && record.basePath === route.basePath,
+      )
 
       loadImageFromUrl(
         `${route.basePath}${route.filename}`,

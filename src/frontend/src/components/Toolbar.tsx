@@ -1,12 +1,15 @@
 import { ChevronDownIcon, FolderOpenIcon, HomeIcon, PencilLineIcon } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FEEDBACK_FORM_URL } from '../config'
 import { displayNameFor } from '../lib/image-names'
 import { useAppState, useDispatch } from '../state'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
+import BrandMark from './BrandMark'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -110,11 +113,12 @@ export default function Toolbar({
               type="button"
               onClick={hasImage ? onGoHome : undefined}
               className={[
-                'text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
+                'inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
                 hasImage ? 'cursor-pointer transition-colors hover:text-foreground' : 'cursor-default',
               ].join(' ')}
               aria-label={hasImage ? 'Go to home page' : undefined}
             >
+              <BrandMark className="size-4 shrink-0" />
               Wildlife Survey Counter
             </button>
           </div>
@@ -164,6 +168,23 @@ export default function Toolbar({
               Help
               <ShortcutKey shortcut="?" compact />
             </Button>
+          ) : null}
+
+          {hasImage ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button asChild size="sm">
+                    <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer">
+                      Give Feedback
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="end">
+                  Share bugs, feature requests, workflow notes, or any other feedback.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : null}
         </div>
       </div>

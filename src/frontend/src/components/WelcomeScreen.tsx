@@ -1,8 +1,10 @@
 import { FolderOpenIcon, HistoryIcon, ImageIcon, PencilLineIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FEEDBACK_FORM_URL, UPDATES_FORM_ACTION, UPDATES_FORM_EMAIL_FIELD } from '../config'
 import { getBrowserImageFromBasePath, isBrowserImageBasePath } from '../lib/browser-images'
 import { displayNameFor, normalizeDisplayName } from '../lib/image-names'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
+import BrandMark from './BrandMark'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 
@@ -41,6 +43,8 @@ export default function WelcomeScreen({
   const [pendingDelete, setPendingDelete] = useState<RecentImageRecord | null>(null)
   const [pendingRename, setPendingRename] = useState<RecentImageRecord | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [updatesEmail, setUpdatesEmail] = useState('')
+  const [updatesSubmitted, setUpdatesSubmitted] = useState(false)
   const topRecent = useMemo(() => recentImages.slice(0, 8), [recentImages])
 
   useEffect(() => {
@@ -141,7 +145,10 @@ export default function WelcomeScreen({
           <section className="rounded-2xl border border-border bg-card/70 p-6 shadow-sm">
             <div className="max-w-2xl space-y-4">
               <div className="space-y-2">
-                <h1 className="text-3xl font-semibold text-foreground">Wildlife Survey Counter</h1>
+                <div className="inline-flex items-center gap-3 rounded-full border border-border/80 bg-background/50 px-3 py-2">
+                  <BrandMark className="size-8 shrink-0" title="Wildlife Survey Counter" />
+                  <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Wildlife Survey Counter</h1>
+                </div>
                 <p className="max-w-xl text-sm leading-6 text-muted-foreground">
                   Review aerial survey photos, place markers quickly, and track bulls and spikes.
                 </p>
@@ -196,6 +203,80 @@ export default function WelcomeScreen({
                   </div>
                 ))}
               </div>
+
+              <section className="rounded-xl border border-primary/25 bg-primary/8 p-4">
+                <div className="space-y-3">
+                  <p className="text-sm leading-6 text-foreground">
+                    Built by{' '}
+                    <a
+                      href="mailto:davwmont@gmail.com"
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      David Montague
+                    </a>{' '}
+                    in Bozeman, Montana.
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl border border-border/70 bg-background/45 p-3">
+                      <div className="text-sm font-medium text-foreground">Feedback</div>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Share bugs, feature requests, workflow notes, or any other feedback.
+                      </p>
+                      <div className="mt-3">
+                        <Button asChild size="sm">
+                          <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer">
+                            Give feedback
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border/70 bg-background/45 p-3">
+                      <div className="text-sm font-medium text-foreground">Updates</div>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Leave your email if you want to be notified about updates to the tool.
+                      </p>
+                      <form
+                        action={UPDATES_FORM_ACTION}
+                        method="post"
+                        target="updates-signup-target"
+                        className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row"
+                        onSubmit={() => {
+                          setUpdatesSubmitted(true)
+                          setUpdatesEmail('')
+                        }}
+                      >
+                        <label htmlFor="home-notify-email" className="sr-only">
+                          Email for updates
+                        </label>
+                        <input
+                          id="home-notify-email"
+                          type="email"
+                          name={UPDATES_FORM_EMAIL_FIELD}
+                          autoComplete="email"
+                          required
+                          placeholder="Email for updates"
+                          value={updatesEmail}
+                          onChange={(event) => {
+                            setUpdatesEmail(event.target.value)
+                            if (updatesSubmitted) setUpdatesSubmitted(false)
+                          }}
+                          className="h-9 min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex-1"
+                        />
+                        <input type="hidden" name="fvv" value="1" />
+                        <input type="hidden" name="pageHistory" value="0" />
+                        <Button type="submit" size="sm" className="sm:shrink-0">
+                          Notify me
+                        </Button>
+                      </form>
+                      <iframe title="" name="updates-signup-target" className="hidden" />
+                      {updatesSubmitted ? (
+                        <p className="mt-2 text-xs leading-5 text-primary">Thanks. I’ll use this only for tool updates.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </section>
 
               <section className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
@@ -308,20 +389,6 @@ export default function WelcomeScreen({
                 </div>
               </section>
             )}
-
-            <section className="rounded-xl border border-primary/25 bg-primary/8 p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Contact</div>
-              <p className="mt-2 text-sm leading-6 text-foreground">
-                Questions or feature requests? Email David Montague at{' '}
-                <a
-                  className="font-medium text-primary underline-offset-4 hover:underline"
-                  href="mailto:davwmont@gmail.com"
-                >
-                  davwmont@gmail.com
-                </a>
-                .
-              </p>
-            </section>
           </aside>
         </div>
       </div>
