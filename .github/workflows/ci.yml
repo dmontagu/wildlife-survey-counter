@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Ruff check
+        run: uv run ruff check src/wildlife_counter/
+
+      - name: Ruff format check
+        run: uv run ruff format --check src/wildlife_counter/
+
+      - name: Pyright
+        run: uv run pyright
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Biome check
+        run: npx --prefix src/frontend biome check src/frontend/
+
+      - name: TypeScript typecheck
+        working-directory: src/frontend
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        working-directory: src/frontend
+        run: npm run build

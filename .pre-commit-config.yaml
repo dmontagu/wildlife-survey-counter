@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v2.3.9
+    hooks:
+      - id: biome-check
+        additional_dependencies: ["@biomejs/biome@2.4.0"]
+        files: ^src/frontend/
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: uv run pyright
+        language: system
+        types: [file]
+        pass_filenames: false
+        files: '^(uv\.lock|pyproject\.toml|src/wildlife_counter/.*\.py)$'
+      - id: tsc
+        name: tsc
+        entry: npx --prefix src/frontend tsc --noEmit -p src/frontend/tsconfig.json
+        language: system
+        types: [file]
+        pass_filenames: false
+        files: '^src/frontend/.*\.(ts|tsx)$'

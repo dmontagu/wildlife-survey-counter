@@ -1,0 +1,23 @@
+name: traefik
+
+services:
+  traefik:
+    image: traefik:3
+    container_name: traefik-proxy
+    restart: unless-stopped
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+      - "8080:8080"    # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

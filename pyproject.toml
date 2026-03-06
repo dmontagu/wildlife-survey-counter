@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wildlife-survey-counter"
+version = "0.1.0"
+description = "Automated wildlife counting from aerial survey photography"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiosqlite>=0.20.0",
+    "fastapi>=0.115.0",
+    "logfire[fastapi]>=3.0.0",
+    "numpy>=2.0.0",
+    "opencv-python-headless>=4.13.0.90",
+    "pillow>=12.1.0",
+    "pydantic-ai>=0.1.0",
+    "pydantic-settings>=2.0.0",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.34.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "einops>=0.8.2",
+    "opencv-python>=4.13.0.90",
+    "sam2>=1.1.0",
+    "supervision>=0.27.0",
+    "timm>=1.0.24",
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+    "transformers>=5.0.0",
+    "ultralytics>=8.4.11",
+]
+
+[project.scripts]
+wildlife-counter = "wildlife_counter.server:main"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.0",
+    "ruff>=0.11.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wildlife_counter"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "RUF100"]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.pyright]
+pythonVersion = "3.13"
+include = ["src/wildlife_counter"]
+exclude = ["research"]
+typeCheckingMode = "standard"

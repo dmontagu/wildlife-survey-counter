@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    volumes:
+      - ./src/wildlife_counter:/app/src/wildlife_counter
+      - ./storage:/app/storage
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-wsc}-api.rule=Host(`api.${COMPOSE_PROJECT_NAME:-wsc}.localhost`)
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:-wsc}-api.loadbalancer.server.port=8100
+    networks:
+      - default
+      - traefik
+    healthcheck:
+      test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8100/api/health')"
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    volumes:
+      - ./src/frontend/src:/app/src/frontend/src
+      - ./src/frontend/index.html:/app/src/frontend/index.html
+      - ./biome.json:/app/biome.json
+    environment:
+      - VITE_BACKEND_URL=http://backend:8100
+    depends_on:
+      backend:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:-wsc}.rule=Host(`${COMPOSE_PROJECT_NAME:-wsc}.localhost`)
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:-wsc}.loadbalancer.server.port=5173
+    networks:
+      - default
+      - traefik
+
+networks:
+  traefik:
+    external: true
