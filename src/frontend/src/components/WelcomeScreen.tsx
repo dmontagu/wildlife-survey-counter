@@ -1,36 +1,90 @@
-import { FolderOpenIcon, HistoryIcon, ShieldCheckIcon, SparklesIcon } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
-import { displayNameFor } from '../lib/image-names'
+import { FolderOpenIcon, HistoryIcon, ImageIcon, PencilLineIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { getBrowserImageFromBasePath, isBrowserImageBasePath } from '../lib/browser-images'
+import { displayNameFor, normalizeDisplayName } from '../lib/image-names'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
 import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 
 interface WelcomeScreenProps {
   notice?: string | null
   recentImages: RecentImageRecord[]
   sampleImages: ServerImageRecord[]
+  onDeleteRecentImage: (record: RecentImageRecord) => Promise<void>
   onExportRecent: (record: RecentImageRecord) => void
   onOpenImageFile: (file: File) => Promise<void>
   onOpenRecentImage: (record: RecentImageRecord) => void
+  onRenameRecentImage: (record: RecentImageRecord, name: string | null) => void
   onOpenSampleImage: (record: ServerImageRecord) => void
 }
 
 const QUICK_STEPS = [
   'Open a survey photo or drag one into the page.',
-  'Use Add to place markers, then Select to move or classify them.',
+  'Click empty space to add points, then click a point to relabel or adjust it.',
   'Export a review JPG and JSON when you are finished.',
 ]
 
 export default function WelcomeScreen({
   recentImages,
   sampleImages,
+  onDeleteRecentImage,
   onExportRecent,
   onOpenImageFile,
   onOpenRecentImage,
+  onRenameRecentImage,
   onOpenSampleImage,
 }: WelcomeScreenProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
+  const [pendingDelete, setPendingDelete] = useState<RecentImageRecord | null>(null)
+  const [pendingRename, setPendingRename] = useState<RecentImageRecord | null>(null)
+  const [draftName, setDraftName] = useState('')
+  const topRecent = useMemo(() => recentImages.slice(0, 8), [recentImages])
+
+  useEffect(() => {
+    let cancelled = false
+    const objectUrls: string[] = []
+
+    async function loadPreviews() {
+      const entries = await Promise.all(
+        topRecent.map(async (record) => {
+          if (!isBrowserImageBasePath(record.basePath)) {
+            return [record.id, `${record.basePath}${record.filename}`] as const
+          }
+
+          try {
+            const file = await getBrowserImageFromBasePath(record.basePath)
+            if (!file) return [record.id, null] as const
+            const url = URL.createObjectURL(file)
+            objectUrls.push(url)
+            return [record.id, url] as const
+          } catch {
+            return [record.id, null] as const
+          }
+        }),
+      )
+
+      if (cancelled) {
+        for (const url of objectUrls) URL.revokeObjectURL(url)
+        return
+      }
+
+      setPreviewUrls(
+        Object.fromEntries(
+          entries.filter((entry): entry is readonly [string, string] => typeof entry[1] === 'string'),
+        ),
+      )
+    }
+
+    void loadPreviews()
+
+    return () => {
+      cancelled = true
+      for (const url of objectUrls) URL.revokeObjectURL(url)
+    }
+  }, [topRecent])
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -64,6 +118,22 @@ export default function WelcomeScreen({
     [handleFile],
   )
 
+  const handleDeleteClick = useCallback(
+    async (record: RecentImageRecord) => {
+      if (record.counted > 0 || record.ignored > 0) {
+        setPendingDelete(record)
+        return
+      }
+      await onDeleteRecentImage(record)
+    },
+    [onDeleteRecentImage],
+  )
+
+  const openRenameDialog = useCallback((record: RecentImageRecord) => {
+    setDraftName(displayNameFor(record))
+    setPendingRename(record)
+  }, [])
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 lg:px-6">
@@ -71,13 +141,9 @@ export default function WelcomeScreen({
           <section className="rounded-2xl border border-border bg-card/70 p-6 shadow-sm">
             <div className="max-w-2xl space-y-4">
               <div className="space-y-2">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                  Manual Labeling Workspace
-                </div>
                 <h1 className="text-3xl font-semibold text-foreground">Wildlife Survey Counter</h1>
                 <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  Review aerial survey photos, place markers quickly, and flag special elk like bulls or spikes without
-                  relying on automation.
+                  Review aerial survey photos, place markers quickly, and track bulls and spikes.
                 </p>
               </div>
 
@@ -116,10 +182,6 @@ export default function WelcomeScreen({
                       <p className="text-base font-medium text-foreground">Drop a survey photo here</p>
                       <p className="text-sm text-muted-foreground">or click to browse from this computer</p>
                     </div>
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      Images are re-encoded in the browser before they are saved so EXIF location metadata is stripped
-                      by default.
-                    </p>
                   </div>
                 )}
               </div>
@@ -134,6 +196,21 @@ export default function WelcomeScreen({
                   </div>
                 ))}
               </div>
+
+              <section className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
+                  Storage and Privacy
+                </div>
+                <ul className="mt-2 space-y-2 text-sm leading-6 text-muted-foreground">
+                  <li>Work is saved in this browser.</li>
+                  <li>That means it stays private to this browser and is not visible on the internet.</li>
+                  <li>
+                    If you switch browsers, clear browser storage, or lose access to this device, you can lose access
+                    to saved labeling work.
+                  </li>
+                  <li>If any of this changes in the future, this page will say so clearly.</li>
+                </ul>
+              </section>
             </div>
           </section>
 
@@ -146,25 +223,64 @@ export default function WelcomeScreen({
 
               {recentImages.length > 0 ? (
                 <div className="space-y-3">
-                  {recentImages.slice(0, 8).map((record) => (
+                  {topRecent.map((record) => (
                     <div key={record.id} className="rounded-xl border border-border bg-background/45 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{displayNameFor(record)}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Last opened {new Date(record.lastOpenedAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 gap-2">
-                          <Button size="xs" variant="outline" onClick={() => onOpenRecentImage(record)}>
-                            Open
-                          </Button>
-                          <Button size="xs" variant="secondary" onClick={() => void onExportRecent(record)}>
-                            Export
-                          </Button>
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => onOpenRecentImage(record)}
+                          className="relative mt-0.5 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background/70"
+                          aria-label={`Open ${displayNameFor(record)}`}
+                        >
+                          {previewUrls[record.id] ? (
+                            <img
+                              src={previewUrls[record.id]}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              draggable={false}
+                            />
+                          ) : (
+                            <ImageIcon className="size-5 text-muted-foreground/70" />
+                          )}
+                        </button>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">{displayNameFor(record)}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {record.width} × {record.height}px
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Last opened {new Date(record.lastOpenedAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              onClick={() => void handleDeleteClick(record)}
+                              aria-label={`Delete ${displayNameFor(record)} from recent work`}
+                            >
+                              <Trash2Icon className="size-3.5" />
+                            </Button>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button size="xs" variant="outline" onClick={() => onOpenRecentImage(record)}>
+                              Open
+                            </Button>
+                            <Button size="xs" variant="outline" onClick={() => openRenameDialog(record)}>
+                              <PencilLineIcon className="size-3.5" />
+                              Rename
+                            </Button>
+                            <Button size="xs" variant="secondary" onClick={() => void onExportRecent(record)}>
+                              Export
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -193,20 +309,88 @@ export default function WelcomeScreen({
               </section>
             )}
 
-            <section className="rounded-xl border border-border bg-background/45 p-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheckIcon className="size-4 text-primary" />
-                <h2 className="text-sm font-semibold text-foreground">Workflow Notes</h2>
-              </div>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>Shortcuts are shown directly on the toolbar buttons.</li>
-                <li>Use Home to come back here and switch images.</li>
-                <li>Automation is intentionally tucked away while the manual workflow is being finalized.</li>
-              </ul>
+            <section className="rounded-xl border border-primary/25 bg-primary/8 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Contact</div>
+              <p className="mt-2 text-sm leading-6 text-foreground">
+                Questions or feature requests? Email David Montague at{' '}
+                <a
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  href="mailto:davwmont@gmail.com"
+                >
+                  davwmont@gmail.com
+                </a>
+                .
+              </p>
             </section>
           </aside>
         </div>
       </div>
+
+      <Dialog open={pendingDelete !== null} onOpenChange={(open) => (!open ? setPendingDelete(null) : null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this recent item?</DialogTitle>
+            <DialogDescription>
+              {pendingDelete
+                ? `${displayNameFor(pendingDelete)} has saved annotations. Deleting it will remove the saved image and annotation data from this browser.`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!pendingDelete) return
+                await onDeleteRecentImage(pendingDelete)
+                setPendingDelete(null)
+              }}
+            >
+              Delete Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pendingRename !== null} onOpenChange={(open) => (!open ? setPendingRename(null) : null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename image</DialogTitle>
+            <DialogDescription>
+              {pendingRename ? `Choose a clearer name for ${pendingRename.filename}.` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            value={draftName}
+            onChange={(event) => setDraftName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || !pendingRename) return
+              event.preventDefault()
+              onRenameRecentImage(pendingRename, normalizeDisplayName(draftName, pendingRename.filename))
+              setPendingRename(null)
+            }}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            placeholder="Image name"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingRename(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingRename) return
+                onRenameRecentImage(pendingRename, normalizeDisplayName(draftName, pendingRename.filename))
+                setPendingRename(null)
+              }}
+            >
+              Save Name
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

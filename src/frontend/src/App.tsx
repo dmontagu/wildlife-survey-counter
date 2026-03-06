@@ -2,7 +2,6 @@ import { Redo2Icon, Trash2Icon, Undo2Icon } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import Canvas from './components/Canvas'
-import DetectionPanel from './components/DetectionPanel'
 import HelpOverlay from './components/HelpOverlay'
 import ImageToolOverlays from './components/ImageToolOverlays'
 import MarkerVisibilityControl from './components/MarkerVisibilityControl'
@@ -12,12 +11,17 @@ import StatusBar from './components/StatusBar'
 import Toolbar from './components/Toolbar'
 import { Button } from './components/ui/button'
 import WelcomeScreen from './components/WelcomeScreen'
-import WorkflowPanel from './components/WorkflowPanel'
-import { ENABLE_AUTOMATION, SHOW_DEV_SAMPLES } from './config'
-import { useDetection } from './hooks/useDetection'
+import { SHOW_DEV_SAMPLES } from './config'
 import { useViewport } from './hooks/useViewport'
 import { normalizeAnnotations, summarizeAnnotations } from './lib/annotations'
-import { getBrowserImageFromBasePath, isBrowserImageBasePath, saveBrowserImage } from './lib/browser-images'
+import {
+  browserImageBasePath,
+  browserImageIdFromBasePath,
+  deleteBrowserImageFromBasePath,
+  getBrowserImageFromBasePath,
+  isBrowserImageBasePath,
+  saveBrowserImage,
+} from './lib/browser-images'
 import {
   exportAnnotatedImage,
   exportJsonOnly,
@@ -28,7 +32,7 @@ import {
 } from './lib/export'
 import { displayNameFor, normalizeDisplayName } from './lib/image-names'
 import { stripImageMetadata } from './lib/images'
-import { readRecentImages, upsertRecentImage } from './lib/recent-images'
+import { readRecentImages, removeRecentImage, upsertRecentImage } from './lib/recent-images'
 import {
   annotationsStorageKey,
   LS_ACTIVE_CATEGORY_KEY,
@@ -53,17 +57,105 @@ interface PendingSave {
   annotations: Annotation[]
 }
 
+function buildImagePath(basePath: string, filename: string): string {
+  if (isBrowserImageBasePath(basePath)) {
+    const imageId = browserImageIdFromBasePath(basePath)
+    if (imageId) {
+      return `/image/local/${encodeURIComponent(imageId)}/${encodeURIComponent(filename)}`
+    }
+  }
+
+  if (basePath === '/samples/') {
+    return `/image/sample/${encodeURIComponent(filename)}`
+  }
+
+  if (basePath === '/uploads/') {
+    return `/image/uploads/${encodeURIComponent(filename)}`
+  }
+
+  return `/image/source/${encodeURIComponent(basePath)}/${encodeURIComponent(filename)}`
+}
+
+function parseImagePath(
+  pathname: string,
+): { kind: 'home' } | { kind: 'image'; basePath: string; filename: string } | null {
+  if (pathname === '/' || pathname === '') {
+    return { kind: 'home' }
+  }
+
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts[0] !== 'image') {
+    return null
+  }
+
+  try {
+    if (parts[1] === 'local' && parts.length >= 4) {
+      return {
+        kind: 'image',
+        basePath: browserImageBasePath(decodeURIComponent(parts[2]!)),
+        filename: decodeURIComponent(parts[3]!),
+      }
+    }
+
+    if (parts[1] === 'sample' && parts.length >= 3) {
+      return {
+        kind: 'image',
+        basePath: '/samples/',
+        filename: decodeURIComponent(parts[2]!),
+      }
+    }
+
+    if (parts[1] === 'uploads' && parts.length >= 3) {
+      return {
+        kind: 'image',
+        basePath: '/uploads/',
+        filename: decodeURIComponent(parts[2]!),
+      }
+    }
+
+    if (parts[1] === 'source' && parts.length >= 4) {
+      return {
+        kind: 'image',
+        basePath: decodeURIComponent(parts[2]!),
+        filename: decodeURIComponent(parts[3]!),
+      }
+    }
+
+    if (parts.length < 3) {
+      return null
+    }
+
+    return {
+      kind: 'image',
+      basePath: decodeURIComponent(parts[1]!),
+      filename: decodeURIComponent(parts[2]!),
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const vp = useViewport()
   const [zoomLevel, setZoomLevel] = useState(1)
   const [canvasSize, setCanvasSize] = useState<[number, number]>([800, 600])
   const restoredRef = useRef(false)
-  const [showDetectionPanel, setShowDetectionPanel] = useState(false)
   const [recentImages, setRecentImages] = useState<RecentImageRecord[]>([])
   const [sampleImages, setSampleImages] = useState<ServerImageRecord[]>([])
   const [notice, setNotice] = useState<string | null>(null)
-  const detection = useDetection()
+
+  const navigateHome = useCallback((replace = false) => {
+    if (window.location.pathname === '/' && !window.location.search && !window.location.hash) return
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', '/')
+  }, [])
+
+  const navigateToImage = useCallback((basePath: string, filename: string, replace = false) => {
+    if (!basePath) return
+    const nextPath = buildImagePath(basePath, filename)
+    if (window.location.pathname === nextPath && !window.location.search && !window.location.hash) return
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', nextPath)
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -104,7 +196,13 @@ export default function App() {
   }, [])
 
   const loadImageFromUrl = useCallback(
-    (url: string, filename: string, basePath: string, displayName?: string | null) => {
+    (
+      url: string,
+      filename: string,
+      basePath: string,
+      displayName?: string | null,
+      historyMode: 'none' | 'push' | 'replace' = 'none',
+    ) => {
       const image = new Image()
       image.crossOrigin = 'anonymous'
       image.onload = () => {
@@ -121,17 +219,27 @@ export default function App() {
         })
         restoreAnnotations(filename, basePath)
         setNotice(null)
+        if (historyMode !== 'none') {
+          navigateToImage(basePath, filename, historyMode === 'replace')
+        }
       }
       image.onerror = () => {
         setNotice(`Could not open ${filename}.`)
       }
       image.src = url
     },
-    [restoreAnnotations],
+    [navigateToImage, restoreAnnotations],
   )
 
   const loadImageFromBlob = useCallback(
-    (blob: Blob, filename: string, basePath: string, displayName?: string | null, message?: string) => {
+    (
+      blob: Blob,
+      filename: string,
+      basePath: string,
+      displayName?: string | null,
+      message?: string,
+      historyMode: 'none' | 'push' | 'replace' = 'none',
+    ) => {
       const image = new Image()
       const url = URL.createObjectURL(blob)
       image.onload = () => {
@@ -150,6 +258,9 @@ export default function App() {
           restoreAnnotations(filename, basePath)
         }
         setNotice(message ?? null)
+        if (historyMode !== 'none' && basePath) {
+          navigateToImage(basePath, filename, historyMode === 'replace')
+        }
         URL.revokeObjectURL(url)
       }
       image.onerror = () => {
@@ -158,33 +269,39 @@ export default function App() {
       }
       image.src = url
     },
-    [restoreAnnotations],
+    [navigateToImage, restoreAnnotations],
   )
 
-  const loadLocalImageFile = useCallback((file: File, displayName?: string | null, message?: string) => {
-    const image = new Image()
-    const url = URL.createObjectURL(file)
-    image.onload = () => {
-      dispatch({
-        type: 'LOAD_IMAGE',
-        image: {
-          filename: file.name,
-          displayName: normalizeDisplayName(displayName, file.name),
-          width: image.width,
-          height: image.height,
-          element: image,
-          basePath: '',
-        },
-      })
-      setNotice(message ?? null)
-      URL.revokeObjectURL(url)
-    }
-    image.onerror = () => {
-      setNotice(`Could not open ${file.name}.`)
-      URL.revokeObjectURL(url)
-    }
-    image.src = url
-  }, [])
+  const loadLocalImageFile = useCallback(
+    (file: File, displayName?: string | null, message?: string, historyMode: 'none' | 'push' | 'replace' = 'none') => {
+      const image = new Image()
+      const url = URL.createObjectURL(file)
+      image.onload = () => {
+        dispatch({
+          type: 'LOAD_IMAGE',
+          image: {
+            filename: file.name,
+            displayName: normalizeDisplayName(displayName, file.name),
+            width: image.width,
+            height: image.height,
+            element: image,
+            basePath: '',
+          },
+        })
+        setNotice(message ?? null)
+        if (historyMode !== 'none') {
+          navigateHome(historyMode === 'replace')
+        }
+        URL.revokeObjectURL(url)
+      }
+      image.onerror = () => {
+        setNotice(`Could not open ${file.name}.`)
+        URL.revokeObjectURL(url)
+      }
+      image.src = url
+    },
+    [navigateHome],
+  )
 
   const pendingSaveRef = useRef<PendingSave | null>(null)
 
@@ -305,32 +422,46 @@ export default function App() {
       }
     }
 
-    const savedFilename = localStorage.getItem(LS_IMAGE_KEY)
-    const savedBasePath = localStorage.getItem(LS_IMAGE_BASE_KEY) || '/samples/'
-    const savedDisplayName = localStorage.getItem(LS_IMAGE_DISPLAY_NAME_KEY)
-    if (!savedFilename) return
+    const redirectedPath = new URLSearchParams(window.location.search).get('p')
+    if (redirectedPath) {
+      try {
+        const redirectUrl = new URL(redirectedPath, window.location.origin)
+        window.history.replaceState({}, '', `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`)
+      } catch {}
+    }
 
-    if (isBrowserImageBasePath(savedBasePath)) {
-      void getBrowserImageFromBasePath(savedBasePath)
+    const route = parseImagePath(window.location.pathname)
+    if (!route || route.kind === 'home') {
+      if (!route) {
+        navigateHome(true)
+        setNotice('Image not found. Choose an image from Recent Work or open a new one.')
+      }
+      return
+    }
+
+    const matchingRecent = readRecentImages().find(
+      (record) => record.filename === route.filename && record.basePath === route.basePath,
+    )
+
+    if (isBrowserImageBasePath(route.basePath)) {
+      void getBrowserImageFromBasePath(route.basePath)
         .then((file) => {
           if (!file) {
-            localStorage.removeItem(LS_IMAGE_KEY)
-            localStorage.removeItem(LS_IMAGE_BASE_KEY)
-            localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+            navigateHome(true)
+            setNotice('That saved image is no longer available in this browser.')
             return
           }
-          loadImageFromBlob(file, savedFilename, savedBasePath, savedDisplayName)
+          loadImageFromBlob(file, route.filename, route.basePath, matchingRecent?.displayName)
         })
         .catch(() => {
-          localStorage.removeItem(LS_IMAGE_KEY)
-          localStorage.removeItem(LS_IMAGE_BASE_KEY)
-          localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+          navigateHome(true)
+          setNotice('That saved image is no longer available in this browser.')
         })
       return
     }
 
-    loadImageFromUrl(`${savedBasePath}${savedFilename}`, savedFilename, savedBasePath, savedDisplayName)
-  }, [loadImageFromBlob, loadImageFromUrl, vp])
+    loadImageFromUrl(`${route.basePath}${route.filename}`, route.filename, route.basePath, matchingRecent?.displayName)
+  }, [loadImageFromBlob, loadImageFromUrl, navigateHome, vp])
 
   const openImageFile = useCallback(
     async (file: File) => {
@@ -345,17 +476,69 @@ export default function App() {
 
       try {
         const { basePath } = await saveBrowserImage(sanitizedFile)
-        loadImageFromBlob(sanitizedFile, sanitizedFile.name, basePath)
+        loadImageFromBlob(sanitizedFile, sanitizedFile.name, basePath, null, undefined, 'push')
       } catch {
         loadLocalImageFile(
           sanitizedFile,
           null,
           'Browser storage is unavailable, so this image is open only in the current browser tab.',
+          'push',
         )
       }
     },
     [flushAnnotationSave, loadImageFromBlob, loadLocalImageFile],
   )
+
+  useEffect(() => {
+    function onPopState() {
+      flushAnnotationSave()
+      const route = parseImagePath(window.location.pathname)
+
+      if (!route || route.kind === 'home') {
+        dispatch({ type: 'RESET_WORKSPACE' })
+        if (!route) {
+          navigateHome(true)
+          setNotice('Image not found. Choose an image from Recent Work or open a new one.')
+        } else {
+          setNotice(null)
+        }
+        return
+      }
+
+      const matchingRecent = readRecentImages().find(
+        (record) => record.filename === route.filename && record.basePath === route.basePath,
+      )
+
+      if (isBrowserImageBasePath(route.basePath)) {
+        void getBrowserImageFromBasePath(route.basePath)
+          .then((file) => {
+            if (!file) {
+              navigateHome(true)
+              setNotice('That saved image is no longer available in this browser.')
+              dispatch({ type: 'RESET_WORKSPACE' })
+              return
+            }
+            loadImageFromBlob(file, route.filename, route.basePath, matchingRecent?.displayName)
+          })
+          .catch(() => {
+            navigateHome(true)
+            setNotice('That saved image is no longer available in this browser.')
+            dispatch({ type: 'RESET_WORKSPACE' })
+          })
+        return
+      }
+
+      loadImageFromUrl(
+        `${route.basePath}${route.filename}`,
+        route.filename,
+        route.basePath,
+        matchingRecent?.displayName,
+      )
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [flushAnnotationSave, loadImageFromBlob, loadImageFromUrl, navigateHome])
 
   useEffect(() => {
     function onDragOver(event: DragEvent) {
@@ -418,14 +601,20 @@ export default function App() {
             setNotice(`Could not reopen ${displayNameFor(record)}. It is no longer available in browser storage.`)
             return
           }
-          loadImageFromBlob(file, record.filename, record.basePath, record.displayName)
+          loadImageFromBlob(file, record.filename, record.basePath, record.displayName, undefined, 'push')
         } catch {
           setNotice(`Could not reopen ${displayNameFor(record)}.`)
         }
         return
       }
 
-      loadImageFromUrl(`${record.basePath}${record.filename}`, record.filename, record.basePath, record.displayName)
+      loadImageFromUrl(
+        `${record.basePath}${record.filename}`,
+        record.filename,
+        record.basePath,
+        record.displayName,
+        'push',
+      )
     },
     [flushAnnotationSave, loadImageFromBlob, loadImageFromUrl],
   )
@@ -433,7 +622,7 @@ export default function App() {
   const handleOpenSample = useCallback(
     (record: ServerImageRecord) => {
       flushAnnotationSave()
-      loadImageFromUrl(record.url, record.filename, record.basePath)
+      loadImageFromUrl(record.url, record.filename, record.basePath, null, 'push')
     },
     [flushAnnotationSave, loadImageFromUrl],
   )
@@ -443,11 +632,10 @@ export default function App() {
     localStorage.removeItem(LS_IMAGE_KEY)
     localStorage.removeItem(LS_IMAGE_BASE_KEY)
     localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
-    detection.reset()
-    setShowDetectionPanel(false)
     setNotice(null)
     dispatch({ type: 'RESET_WORKSPACE' })
-  }, [detection, flushAnnotationSave])
+    navigateHome()
+  }, [flushAnnotationSave, navigateHome])
 
   const handleExportResults = useCallback(async () => {
     if (!state.image) return
@@ -525,6 +713,50 @@ export default function App() {
     }
   }, [])
 
+  const handleDeleteRecent = useCallback(async (record: RecentImageRecord) => {
+    localStorage.removeItem(annotationsStorageKey(record.filename, record.basePath))
+
+    const savedFilename = localStorage.getItem(LS_IMAGE_KEY)
+    const savedBasePath = localStorage.getItem(LS_IMAGE_BASE_KEY)
+    if (savedFilename === record.filename && savedBasePath === record.basePath) {
+      localStorage.removeItem(LS_IMAGE_KEY)
+      localStorage.removeItem(LS_IMAGE_BASE_KEY)
+      localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+    }
+
+    if (isBrowserImageBasePath(record.basePath)) {
+      try {
+        await deleteBrowserImageFromBasePath(record.basePath)
+      } catch {
+        setNotice(`Removed ${displayNameFor(record)} from the list, but could not clear its saved browser image.`)
+      }
+    }
+
+    setRecentImages(removeRecentImage(record.id))
+  }, [])
+
+  const handleRenameRecent = useCallback(
+    (record: RecentImageRecord, nextName: string | null) => {
+      const displayName = normalizeDisplayName(nextName, record.filename)
+      setRecentImages(
+        upsertRecentImage({
+          ...record,
+          displayName,
+        }),
+      )
+
+      if (state.image?.filename === record.filename && state.image.basePath === record.basePath) {
+        dispatch({ type: 'RENAME_IMAGE', displayName })
+        if (displayName) {
+          localStorage.setItem(LS_IMAGE_DISPLAY_NAME_KEY, displayName)
+        } else {
+          localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+        }
+      }
+    },
+    [state.image],
+  )
+
   const handleRenameImage = useCallback(
     (nextName: string | null) => {
       if (!state.image) return
@@ -536,34 +768,16 @@ export default function App() {
     [state.image],
   )
 
-  const handleAgentDetect = useCallback(() => {
-    if (!ENABLE_AUTOMATION || !state.image?.filename) return
-    setShowDetectionPanel(true)
-    detection.detect(state.image.filename)
-  }, [detection, state.image])
-
-  const isDetecting = ENABLE_AUTOMATION && detection.state.status === 'running'
-
-  useEffect(() => {
-    if (!ENABLE_AUTOMATION) return
-    if (detection.state.status === 'complete' && detection.state.annotations.length > 0) {
-      dispatch({ type: 'LOAD_ANNOTATIONS', annotations: detection.state.annotations })
-    }
-  }, [detection.state.annotations, detection.state.status])
-
   return (
     <AppStateContext.Provider value={state}>
       <DispatchContext.Provider value={dispatch}>
         <div className="h-full w-full bg-background text-foreground">
           <div className="flex h-full flex-col">
             <Toolbar
-              automationEnabled={ENABLE_AUTOMATION}
               currentDisplayName={state.image ? displayNameFor(state.image) : undefined}
               currentFilename={state.image?.filename}
-              detecting={isDetecting}
               recentImages={recentImages}
               sampleImages={sampleImages}
-              onDetect={handleAgentDetect}
               onExportAnnotatedImage={handleExportAnnotatedImage}
               onExportJsonOnly={handleExportJsonOnly}
               onExportOriginalImage={handleExportOriginalImage}
@@ -590,32 +804,22 @@ export default function App() {
 
             <div className="relative flex min-h-0 flex-1">
               {state.image ? (
-                <>
-                  <div className="relative flex-1">
-                    <WorkflowPanel />
-                    <ImageToolOverlays />
-                    <MarkerVisibilityControl />
-                    <Canvas vp={vp} onCanvasSize={handleCanvasSize} />
-                    <Minimap vp={vp} canvasWidth={canvasSize[0]} canvasHeight={canvasSize[1]} zoomLevel={zoomLevel} />
-                  </div>
-                  {ENABLE_AUTOMATION && showDetectionPanel && (
-                    <DetectionPanel
-                      state={detection.state}
-                      onClose={() => {
-                        setShowDetectionPanel(false)
-                        detection.reset()
-                      }}
-                    />
-                  )}
-                </>
+                <div className="relative flex-1">
+                  <ImageToolOverlays />
+                  <MarkerVisibilityControl />
+                  <Canvas vp={vp} onCanvasSize={handleCanvasSize} />
+                  <Minimap vp={vp} canvasWidth={canvasSize[0]} canvasHeight={canvasSize[1]} zoomLevel={zoomLevel} />
+                </div>
               ) : (
                 <WelcomeScreen
                   notice={notice}
                   recentImages={recentImages}
                   sampleImages={sampleImages}
                   onExportRecent={handleExportRecent}
+                  onDeleteRecentImage={handleDeleteRecent}
                   onOpenImageFile={openImageFile}
                   onOpenRecentImage={handleOpenRecent}
+                  onRenameRecentImage={handleRenameRecent}
                   onOpenSampleImage={handleOpenSample}
                 />
               )}

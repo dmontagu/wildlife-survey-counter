@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wildlife Survey Counter</title>
+    <script>
+      (() => {
+        var redirectedPath = new URLSearchParams(window.location.search).get('p')
+        var redirectUrl
+        if (!redirectedPath) return
+        try {
+          redirectUrl = new URL(redirectedPath, window.location.origin)
+          window.history.replaceState({}, '', redirectUrl.pathname + redirectUrl.search + redirectUrl.hash)
+        } catch {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

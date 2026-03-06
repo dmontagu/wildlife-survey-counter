@@ -17,7 +17,6 @@ export const DEFAULT_ZOOM_SPEED = 1
 export const MIN_ZOOM_SPEED = 0.25
 export const MAX_ZOOM_SPEED = 4
 
-export const ENABLE_AUTOMATION = import.meta.env.VITE_ENABLE_AUTOMATION === 'true'
 export const SHOW_DEV_SAMPLES = import.meta.env.DEV && import.meta.env.VITE_SHOW_SAMPLE_IMAGES !== 'false'
 
 export interface LabelCategoryOption {

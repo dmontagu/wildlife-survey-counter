@@ -27,7 +27,6 @@ const SHARED_GROUPS = [
     title: 'Classification',
     items: [
       ['E', 'Cycle the selected marker label, or set the class for the next new marker when nothing is selected'],
-      ['Double-click', 'Zoom to a marker and select it'],
     ],
   },
 ] as const

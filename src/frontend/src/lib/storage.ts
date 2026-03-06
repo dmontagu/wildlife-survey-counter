@@ -5,7 +5,6 @@ export const LS_ACTIVE_CATEGORY_KEY = 'wsc:active-category'
 export const LS_BBOX_CREATION_KEY = 'wsc:bbox-creation-enabled'
 export const LS_MARKER_VISIBILITY_KEY = 'wsc:marker-visibility'
 export const LS_ZOOM_SPEED_KEY = 'wsc:zoom-speed'
-export const LS_WORKFLOW_PANEL_COLLAPSED_KEY = 'wsc:workflow-panel-collapsed'
 export const LS_RECENT_IMAGES_KEY = 'wsc:recent-images'
 const LS_ANNOTATION_PREFIX = 'wsc:annotations:'
 

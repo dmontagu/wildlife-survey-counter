@@ -102,3 +102,18 @@ export async function getBrowserImageFromBasePath(basePath: string): Promise<Fil
   if (!id) return null
   return getBrowserImage(id)
 }
+
+export async function deleteBrowserImage(id: string): Promise<void> {
+  const db = await openDatabase()
+  const transaction = db.transaction(STORE_NAME, 'readwrite')
+  const store = transaction.objectStore(STORE_NAME)
+  store.delete(id)
+  await transactionDone(transaction)
+  db.close()
+}
+
+export async function deleteBrowserImageFromBasePath(basePath: string): Promise<void> {
+  const id = browserImageIdFromBasePath(basePath)
+  if (!id) return
+  await deleteBrowserImage(id)
+}

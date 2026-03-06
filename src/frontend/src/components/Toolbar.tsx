@@ -1,4 +1,4 @@
-import { ChevronDownIcon, FolderOpenIcon, HomeIcon, LoaderIcon, PencilLineIcon, SparklesIcon } from 'lucide-react'
+import { ChevronDownIcon, FolderOpenIcon, HomeIcon, PencilLineIcon } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { displayNameFor } from '../lib/image-names'
@@ -21,13 +21,10 @@ import {
 } from './ui/dropdown-menu'
 
 interface ToolbarProps {
-  automationEnabled: boolean
   currentDisplayName?: string
   currentFilename?: string
-  detecting: boolean
   recentImages: RecentImageRecord[]
   sampleImages: ServerImageRecord[]
-  onDetect: () => void
   onExportAnnotatedImage: () => void
   onExportJsonOnly: () => void
   onExportOriginalImage: () => void
@@ -41,13 +38,10 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
-  automationEnabled,
   currentDisplayName,
   currentFilename,
-  detecting,
   recentImages,
   sampleImages,
-  onDetect,
   onExportAnnotatedImage,
   onExportJsonOnly,
   onExportOriginalImage,
@@ -112,58 +106,50 @@ export default function Toolbar({
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
         <div className="mr-1 flex items-center gap-2">
           <div className="hidden min-w-0 sm:flex items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <button
+              type="button"
+              onClick={hasImage ? onGoHome : undefined}
+              className={[
+                'text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
+                hasImage ? 'cursor-pointer transition-colors hover:text-foreground' : 'cursor-default',
+              ].join(' ')}
+              aria-label={hasImage ? 'Go to home page' : undefined}
+            >
               Wildlife Survey Counter
-            </div>
+            </button>
           </div>
 
-          <WorkspaceMenu
-            currentDisplayName={currentDisplayName}
-            currentFilename={currentFilename}
-            recentImages={recentImages}
-            sampleImages={sampleImages}
-            onOpenImage={() => imageInputRef.current?.click()}
-            onOpenRecentImage={onOpenRecentImage}
-            onOpenSampleImage={onOpenSampleImage}
-            onLoadAnnotations={() => annotationsInputRef.current?.click()}
-            onExportAnnotatedImage={onExportAnnotatedImage}
-            onExportJsonOnly={onExportJsonOnly}
-            onExportOriginalImage={onExportOriginalImage}
-            onExportResults={onExportResults}
-            hasImage={hasImage}
-            bboxCreationEnabled={state.bboxCreationEnabled}
-            showNumbers={state.showNumbers}
-            showRejected={state.showRejected}
-            onFitToWindow={onFitToWindow}
-            onRenameImage={onRenameImage}
-            onToggleBboxCreation={() => dispatch({ type: 'TOGGLE_BBOX_CREATION' })}
-            onToggleNumbers={() => dispatch({ type: 'TOGGLE_NUMBERS' })}
-            onToggleRejected={() => dispatch({ type: 'TOGGLE_REJECTED' })}
-          />
+          {hasImage ? (
+            <WorkspaceMenu
+              currentDisplayName={currentDisplayName}
+              currentFilename={currentFilename}
+              recentImages={recentImages}
+              sampleImages={sampleImages}
+              onOpenImage={() => imageInputRef.current?.click()}
+              onOpenRecentImage={onOpenRecentImage}
+              onOpenSampleImage={onOpenSampleImage}
+              onLoadAnnotations={() => annotationsInputRef.current?.click()}
+              onExportAnnotatedImage={onExportAnnotatedImage}
+              onExportJsonOnly={onExportJsonOnly}
+              onExportOriginalImage={onExportOriginalImage}
+              onExportResults={onExportResults}
+              hasImage={hasImage}
+              bboxCreationEnabled={state.bboxCreationEnabled}
+              showNumbers={state.showNumbers}
+              showRejected={state.showRejected}
+              onFitToWindow={onFitToWindow}
+              onRenameImage={onRenameImage}
+              onToggleBboxCreation={() => dispatch({ type: 'TOGGLE_BBOX_CREATION' })}
+              onToggleNumbers={() => dispatch({ type: 'TOGGLE_NUMBERS' })}
+              onToggleRejected={() => dispatch({ type: 'TOGGLE_REJECTED' })}
+            />
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => imageInputRef.current?.click()}>
+              <FolderOpenIcon className="size-3.5" />
+              Open image
+            </Button>
+          )}
         </div>
-
-        {hasImage && (
-          <>
-            <div className="h-7 w-px bg-border/80" />
-
-            {automationEnabled && (
-              <>
-                <div className="h-7 w-px bg-border/80" />
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={onDetect} disabled={!state.image || detecting}>
-                    {detecting ? (
-                      <LoaderIcon className="size-3.5 animate-spin" />
-                    ) : (
-                      <SparklesIcon className="size-3.5" />
-                    )}
-                    Automation Beta
-                  </Button>
-                </div>
-              </>
-            )}
-          </>
-        )}
 
         <div className="ml-auto flex items-center gap-2">
           {hasImage && (
@@ -173,10 +159,12 @@ export default function Toolbar({
             </Button>
           )}
 
-          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_HELP' })}>
-            Help
-            <ShortcutKey shortcut="?" compact />
-          </Button>
+          {hasImage ? (
+            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_HELP' })}>
+              Help
+              <ShortcutKey shortcut="?" compact />
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

@@ -53,3 +53,7 @@ export function upsertRecentImage(record: RecentImageRecord): RecentImageRecord[
   next.unshift(record)
   return writeRecentImages(next)
 }
+
+export function removeRecentImage(id: string): RecentImageRecord[] {
+  return writeRecentImages(readRecentImages().filter((item) => item.id !== id))
+}

@@ -690,27 +690,6 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     [addAnnotation, dispatch, getCanvasPos, idleCursor, spaceHeld, state, vp],
   )
 
-  const onDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      const [sx, sy] = getCanvasPos(e)
-      const hitId = findAnnotationAt(sx, sy)
-      if (hitId !== null) {
-        const ann = state.annotations.find((a) => a.id === hitId)
-        if (ann && containerRef.current) {
-          const { width, height } = containerRef.current.getBoundingClientRect()
-          const targetScale = 4
-          vp.viewport.current.scale = targetScale
-          vp.viewport.current.offsetX = width / 2 - ann.x * targetScale
-          vp.viewport.current.offsetY = height / 2 - ann.y * targetScale
-          vp.clampViewport()
-          vp.dirty.current = true
-          dispatch({ type: 'SELECT', ids: [hitId] })
-        }
-      }
-    },
-    [getCanvasPos, findAnnotationAt, state.annotations, vp, dispatch],
-  )
-
   const onMouseDownCapture = useCallback((e: React.MouseEvent) => {
     // Middle mouse button → pan
     if (e.button === 1) {
@@ -728,7 +707,6 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        onDoubleClick={onDoubleClick}
         onMouseDownCapture={onMouseDownCapture}
         className="absolute top-0 left-0"
       />
