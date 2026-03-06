@@ -16,7 +16,7 @@ export default function DetectionPanel({ state, onClose }: DetectionPanelProps) 
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [state.steps])
+  })
 
   return (
     <div className="w-80 border-l border-border flex flex-col bg-background shrink-0">

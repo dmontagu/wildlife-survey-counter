@@ -1,10 +1,12 @@
-import { FolderOpenIcon, HomeIcon, LoaderIcon, SparklesIcon } from 'lucide-react'
+import { ChevronDownIcon, FolderOpenIcon, HomeIcon, LoaderIcon, PencilLineIcon, SparklesIcon } from 'lucide-react'
 import type React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { displayNameFor } from '../lib/image-names'
 import { useAppState, useDispatch } from '../state'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -20,33 +22,41 @@ import {
 
 interface ToolbarProps {
   automationEnabled: boolean
+  currentDisplayName?: string
   currentFilename?: string
   detecting: boolean
   recentImages: RecentImageRecord[]
   sampleImages: ServerImageRecord[]
   onDetect: () => void
+  onExportAnnotatedImage: () => void
   onExportJsonOnly: () => void
+  onExportOriginalImage: () => void
   onExportResults: () => void
   onFitToWindow: () => void
   onGoHome: () => void
   onOpenImageFile: (file: File) => Promise<void>
   onOpenRecentImage: (record: RecentImageRecord) => void
+  onRenameImage: (name: string | null) => void
   onOpenSampleImage: (record: ServerImageRecord) => void
 }
 
 export default function Toolbar({
   automationEnabled,
+  currentDisplayName,
   currentFilename,
   detecting,
   recentImages,
   sampleImages,
   onDetect,
+  onExportAnnotatedImage,
   onExportJsonOnly,
+  onExportOriginalImage,
   onExportResults,
   onFitToWindow,
   onGoHome,
   onOpenImageFile,
   onOpenRecentImage,
+  onRenameImage,
   onOpenSampleImage,
 }: ToolbarProps) {
   const state = useAppState()
@@ -108,6 +118,7 @@ export default function Toolbar({
           </div>
 
           <WorkspaceMenu
+            currentDisplayName={currentDisplayName}
             currentFilename={currentFilename}
             recentImages={recentImages}
             sampleImages={sampleImages}
@@ -115,13 +126,16 @@ export default function Toolbar({
             onOpenRecentImage={onOpenRecentImage}
             onOpenSampleImage={onOpenSampleImage}
             onLoadAnnotations={() => annotationsInputRef.current?.click()}
+            onExportAnnotatedImage={onExportAnnotatedImage}
             onExportJsonOnly={onExportJsonOnly}
+            onExportOriginalImage={onExportOriginalImage}
             onExportResults={onExportResults}
             hasImage={hasImage}
             bboxCreationEnabled={state.bboxCreationEnabled}
             showNumbers={state.showNumbers}
             showRejected={state.showRejected}
             onFitToWindow={onFitToWindow}
+            onRenameImage={onRenameImage}
             onToggleBboxCreation={() => dispatch({ type: 'TOGGLE_BBOX_CREATION' })}
             onToggleNumbers={() => dispatch({ type: 'TOGGLE_NUMBERS' })}
             onToggleRejected={() => dispatch({ type: 'TOGGLE_REJECTED' })}
@@ -170,6 +184,7 @@ export default function Toolbar({
 }
 
 function WorkspaceMenu({
+  currentDisplayName,
   currentFilename,
   recentImages,
   sampleImages,
@@ -177,17 +192,21 @@ function WorkspaceMenu({
   onOpenRecentImage,
   onOpenSampleImage,
   onLoadAnnotations,
+  onExportAnnotatedImage,
   onExportJsonOnly,
+  onExportOriginalImage,
   onExportResults,
   hasImage,
   bboxCreationEnabled,
   showNumbers,
   showRejected,
   onFitToWindow,
+  onRenameImage,
   onToggleBboxCreation,
   onToggleNumbers,
   onToggleRejected,
 }: {
+  currentDisplayName?: string
   currentFilename?: string
   recentImages: RecentImageRecord[]
   sampleImages: ServerImageRecord[]
@@ -195,87 +214,160 @@ function WorkspaceMenu({
   onOpenRecentImage: (record: RecentImageRecord) => void
   onOpenSampleImage: (record: ServerImageRecord) => void
   onLoadAnnotations: () => void
+  onExportAnnotatedImage: () => void
   onExportJsonOnly: () => void
+  onExportOriginalImage: () => void
   onExportResults: () => void
   hasImage: boolean
   bboxCreationEnabled: boolean
   showNumbers: boolean
   showRejected: boolean
   onFitToWindow: () => void
+  onRenameImage: (name: string | null) => void
   onToggleBboxCreation: () => void
   onToggleNumbers: () => void
   onToggleRejected: () => void
 }) {
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [draftName, setDraftName] = useState(currentDisplayName ?? currentFilename ?? '')
+
+  useEffect(() => {
+    if (!renameOpen) {
+      setDraftName(currentDisplayName ?? currentFilename ?? '')
+    }
+  }, [currentDisplayName, currentFilename, renameOpen])
+
+  const openRenameDialog = useCallback(() => {
+    setDraftName(currentDisplayName ?? currentFilename ?? '')
+    setRenameOpen(true)
+  }, [currentDisplayName, currentFilename])
+
+  const handleRenameSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      onRenameImage(draftName || null)
+      setRenameOpen(false)
+    },
+    [draftName, onRenameImage],
+  )
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="max-w-[240px] gap-2">
-          <FolderOpenIcon className="size-3.5" />
-          <span className="truncate">{currentFilename || 'Open image'}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
-        <DropdownMenuItem onSelect={onOpenImage}>Open Image...</DropdownMenuItem>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="max-w-[240px] gap-2">
+            <FolderOpenIcon className="size-3.5" />
+            <span className="truncate">{currentDisplayName || currentFilename || 'Open image'}</span>
+            <ChevronDownIcon className="size-3.5 opacity-70" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-72">
+          <DropdownMenuItem onSelect={onOpenImage}>Open Image...</DropdownMenuItem>
 
-        {recentImages.length > 0 && (
+          {hasImage && (
+            <DropdownMenuItem onSelect={openRenameDialog}>
+              Rename Image...
+              <DropdownMenuShortcut>
+                <PencilLineIcon className="size-3.5" />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
+
+          {recentImages.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Recent Work</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-h-[280px] w-80 overflow-y-auto">
+                {recentImages.map((record) => (
+                  <DropdownMenuItem key={record.id} onSelect={() => onOpenRecentImage(record)}>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate">{displayNameFor(record)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+
+          {sampleImages.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Dev Samples</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-h-[280px] overflow-y-auto">
+                {sampleImages.map((record) => (
+                  <DropdownMenuItem key={record.url} onSelect={() => onOpenSampleImage(record)}>
+                    {record.filename}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+
+          <DropdownMenuItem onSelect={onLoadAnnotations}>Load Annotation JSON...</DropdownMenuItem>
+
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Recent Work</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="max-h-[280px] w-80 overflow-y-auto">
-              {recentImages.map((record) => (
-                <DropdownMenuItem key={record.id} onSelect={() => onOpenRecentImage(record)}>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate">{record.filename}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
+            <DropdownMenuSubTrigger>Advanced</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-72">
+              <DropdownMenuCheckboxItem checked={bboxCreationEnabled} onCheckedChange={onToggleBboxCreation}>
+                Enable advanced bbox tool (Alt + drag)
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={showNumbers} onCheckedChange={onToggleNumbers}>
+                Show Numbers
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem checked={showRejected} onCheckedChange={onToggleRejected}>
+                Show Excluded Markers
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onFitToWindow}>Fit to Window</DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-        )}
 
-        {sampleImages.length > 0 && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Dev Samples</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="max-h-[280px] overflow-y-auto">
-              {sampleImages.map((record) => (
-                <DropdownMenuItem key={record.url} onSelect={() => onOpenSampleImage(record)}>
-                  {record.filename}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={onExportResults} disabled={!hasImage}>
+            Export Results
+            <DropdownMenuShortcut>JSON + JPG</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onExportAnnotatedImage} disabled={!hasImage}>
+            Export Annotated Image
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onExportOriginalImage} disabled={!hasImage}>
+            Export Original Image
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onExportJsonOnly} disabled={!hasImage}>
+            Export JSON Only
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        <DropdownMenuItem onSelect={onLoadAnnotations}>Load Annotation JSON...</DropdownMenuItem>
-
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Advanced</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-72">
-            <DropdownMenuCheckboxItem checked={bboxCreationEnabled} onCheckedChange={onToggleBboxCreation}>
-              Enable bbox creation while dragging in Add mode
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={showNumbers} onCheckedChange={onToggleNumbers}>
-              Show Numbers
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={showRejected} onCheckedChange={onToggleRejected}>
-              Show Ignored
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onFitToWindow}>Fit to Window</DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onExportResults} disabled={!hasImage}>
-          Export Results
-          <DropdownMenuShortcut>JSON + JPG</DropdownMenuShortcut>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onExportJsonOnly} disabled={!hasImage}>
-          Export JSON Only
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename image</DialogTitle>
+            <DialogDescription>
+              Choose a clearer name for browsing recent work and naming exports. Leave it blank to use the original
+              filename.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleRenameSubmit}>
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium text-foreground">Display name</span>
+              <input
+                value={draftName}
+                onChange={(event) => setDraftName(event.target.value)}
+                placeholder={currentFilename || 'Survey image'}
+                className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
+              />
+            </label>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setDraftName(currentFilename ?? '')}>
+                Reset
+              </Button>
+              <Button type="submit">Save Name</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

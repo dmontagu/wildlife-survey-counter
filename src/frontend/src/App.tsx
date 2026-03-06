@@ -5,18 +5,28 @@ import Canvas from './components/Canvas'
 import DetectionPanel from './components/DetectionPanel'
 import HelpOverlay from './components/HelpOverlay'
 import ImageToolOverlays from './components/ImageToolOverlays'
+import MarkerVisibilityControl from './components/MarkerVisibilityControl'
 import Minimap from './components/Minimap'
 import ShortcutKey, { ShortcutSequence } from './components/ShortcutKey'
 import StatusBar from './components/StatusBar'
 import Toolbar from './components/Toolbar'
 import { Button } from './components/ui/button'
 import WelcomeScreen from './components/WelcomeScreen'
+import WorkflowPanel from './components/WorkflowPanel'
 import { ENABLE_AUTOMATION, SHOW_DEV_SAMPLES } from './config'
 import { useDetection } from './hooks/useDetection'
 import { useViewport } from './hooks/useViewport'
 import { normalizeAnnotations, summarizeAnnotations } from './lib/annotations'
 import { getBrowserImageFromBasePath, isBrowserImageBasePath, saveBrowserImage } from './lib/browser-images'
-import { exportJsonOnly, exportResults, exportResultsFromBlob, exportResultsFromUrl } from './lib/export'
+import {
+  exportAnnotatedImage,
+  exportJsonOnly,
+  exportOriginalImage,
+  exportResults,
+  exportResultsFromBlob,
+  exportResultsFromUrl,
+} from './lib/export'
+import { displayNameFor, normalizeDisplayName } from './lib/image-names'
 import { stripImageMetadata } from './lib/images'
 import { readRecentImages, upsertRecentImage } from './lib/recent-images'
 import {
@@ -24,8 +34,9 @@ import {
   LS_ACTIVE_CATEGORY_KEY,
   LS_BBOX_CREATION_KEY,
   LS_IMAGE_BASE_KEY,
+  LS_IMAGE_DISPLAY_NAME_KEY,
   LS_IMAGE_KEY,
-  LS_INTERACTION_MODE_KEY,
+  LS_MARKER_VISIBILITY_KEY,
   LS_ZOOM_SPEED_KEY,
   legacyAnnotationsStorageKey,
 } from './lib/storage'
@@ -35,6 +46,7 @@ import type { Annotation, RecentImageRecord, ServerImageRecord } from './types'
 
 interface PendingSave {
   filename: string
+  displayName: string | null
   basePath: string
   width: number
   height: number
@@ -92,7 +104,7 @@ export default function App() {
   }, [])
 
   const loadImageFromUrl = useCallback(
-    (url: string, filename: string, basePath: string) => {
+    (url: string, filename: string, basePath: string, displayName?: string | null) => {
       const image = new Image()
       image.crossOrigin = 'anonymous'
       image.onload = () => {
@@ -100,6 +112,7 @@ export default function App() {
           type: 'LOAD_IMAGE',
           image: {
             filename,
+            displayName: normalizeDisplayName(displayName, filename),
             width: image.width,
             height: image.height,
             element: image,
@@ -118,7 +131,7 @@ export default function App() {
   )
 
   const loadImageFromBlob = useCallback(
-    (blob: Blob, filename: string, basePath: string, message?: string) => {
+    (blob: Blob, filename: string, basePath: string, displayName?: string | null, message?: string) => {
       const image = new Image()
       const url = URL.createObjectURL(blob)
       image.onload = () => {
@@ -126,6 +139,7 @@ export default function App() {
           type: 'LOAD_IMAGE',
           image: {
             filename,
+            displayName: normalizeDisplayName(displayName, filename),
             width: image.width,
             height: image.height,
             element: image,
@@ -147,7 +161,7 @@ export default function App() {
     [restoreAnnotations],
   )
 
-  const loadLocalImageFile = useCallback((file: File, message?: string) => {
+  const loadLocalImageFile = useCallback((file: File, displayName?: string | null, message?: string) => {
     const image = new Image()
     const url = URL.createObjectURL(file)
     image.onload = () => {
@@ -155,6 +169,7 @@ export default function App() {
         type: 'LOAD_IMAGE',
         image: {
           filename: file.name,
+          displayName: normalizeDisplayName(displayName, file.name),
           width: image.width,
           height: image.height,
           element: image,
@@ -180,11 +195,17 @@ export default function App() {
     if (!pending.basePath) {
       localStorage.removeItem(LS_IMAGE_KEY)
       localStorage.removeItem(LS_IMAGE_BASE_KEY)
+      localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
       return
     }
 
     localStorage.setItem(LS_IMAGE_KEY, pending.filename)
     localStorage.setItem(LS_IMAGE_BASE_KEY, pending.basePath)
+    if (pending.displayName) {
+      localStorage.setItem(LS_IMAGE_DISPLAY_NAME_KEY, pending.displayName)
+    } else {
+      localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+    }
     localStorage.setItem(
       annotationsStorageKey(pending.filename, pending.basePath),
       JSON.stringify(pending.annotations),
@@ -195,6 +216,7 @@ export default function App() {
       upsertRecentImage({
         id: `${pending.basePath}|${pending.filename}`,
         filename: pending.filename,
+        displayName: pending.displayName,
         basePath: pending.basePath,
         width: pending.width,
         height: pending.height,
@@ -211,22 +233,15 @@ export default function App() {
     if (!state.image) return
     pendingSaveRef.current = {
       filename: state.image.filename,
+      displayName: state.image.displayName,
       basePath: state.image.basePath,
       width: state.image.width,
       height: state.image.height,
       annotations: state.annotations,
     }
-  }, [state.image, state.annotations])
-
-  useEffect(() => {
-    if (!state.image) return
     const timer = setTimeout(flushAnnotationSave, 500)
     return () => clearTimeout(timer)
   }, [state.image, state.annotations, flushAnnotationSave])
-
-  useEffect(() => {
-    localStorage.setItem(LS_INTERACTION_MODE_KEY, state.interactionMode)
-  }, [state.interactionMode])
 
   useEffect(() => {
     localStorage.setItem(LS_ACTIVE_CATEGORY_KEY, state.activeCategory ?? 'cow')
@@ -235,6 +250,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(LS_BBOX_CREATION_KEY, state.bboxCreationEnabled ? 'true' : 'false')
   }, [state.bboxCreationEnabled])
+
+  useEffect(() => {
+    localStorage.setItem(LS_MARKER_VISIBILITY_KEY, state.markerVisibility)
+  }, [state.markerVisibility])
 
   useEffect(() => {
     localStorage.setItem(LS_ZOOM_SPEED_KEY, String(state.zoomSpeed))
@@ -256,11 +275,6 @@ export default function App() {
         .catch(() => {})
     }
 
-    const savedMode = localStorage.getItem(LS_INTERACTION_MODE_KEY)
-    if (savedMode === 'add' || savedMode === 'select') {
-      dispatch({ type: 'SET_INTERACTION_MODE', mode: savedMode })
-    }
-
     const savedCategory = localStorage.getItem(LS_ACTIVE_CATEGORY_KEY)
     if (savedCategory === 'bull' || savedCategory === 'spike') {
       dispatch({ type: 'SET_ACTIVE_CATEGORY', category: savedCategory })
@@ -271,6 +285,15 @@ export default function App() {
     const savedBboxCreation = localStorage.getItem(LS_BBOX_CREATION_KEY)
     if (savedBboxCreation === 'true') {
       dispatch({ type: 'TOGGLE_BBOX_CREATION' })
+    }
+
+    const savedMarkerVisibility = localStorage.getItem(LS_MARKER_VISIBILITY_KEY)
+    if (
+      savedMarkerVisibility === 'visible' ||
+      savedMarkerVisibility === 'dimmed' ||
+      savedMarkerVisibility === 'hidden'
+    ) {
+      dispatch({ type: 'SET_MARKER_VISIBILITY', visibility: savedMarkerVisibility })
     }
 
     const savedZoomSpeed = localStorage.getItem(LS_ZOOM_SPEED_KEY)
@@ -284,6 +307,7 @@ export default function App() {
 
     const savedFilename = localStorage.getItem(LS_IMAGE_KEY)
     const savedBasePath = localStorage.getItem(LS_IMAGE_BASE_KEY) || '/samples/'
+    const savedDisplayName = localStorage.getItem(LS_IMAGE_DISPLAY_NAME_KEY)
     if (!savedFilename) return
 
     if (isBrowserImageBasePath(savedBasePath)) {
@@ -292,18 +316,20 @@ export default function App() {
           if (!file) {
             localStorage.removeItem(LS_IMAGE_KEY)
             localStorage.removeItem(LS_IMAGE_BASE_KEY)
+            localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
             return
           }
-          loadImageFromBlob(file, savedFilename, savedBasePath)
+          loadImageFromBlob(file, savedFilename, savedBasePath, savedDisplayName)
         })
         .catch(() => {
           localStorage.removeItem(LS_IMAGE_KEY)
           localStorage.removeItem(LS_IMAGE_BASE_KEY)
+          localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
         })
       return
     }
 
-    loadImageFromUrl(`${savedBasePath}${savedFilename}`, savedFilename, savedBasePath)
+    loadImageFromUrl(`${savedBasePath}${savedFilename}`, savedFilename, savedBasePath, savedDisplayName)
   }, [loadImageFromBlob, loadImageFromUrl, vp])
 
   const openImageFile = useCallback(
@@ -323,6 +349,7 @@ export default function App() {
       } catch {
         loadLocalImageFile(
           sanitizedFile,
+          null,
           'Browser storage is unavailable, so this image is open only in the current browser tab.',
         )
       }
@@ -388,17 +415,17 @@ export default function App() {
         try {
           const file = await getBrowserImageFromBasePath(record.basePath)
           if (!file) {
-            setNotice(`Could not reopen ${record.filename}. It is no longer available in browser storage.`)
+            setNotice(`Could not reopen ${displayNameFor(record)}. It is no longer available in browser storage.`)
             return
           }
-          loadImageFromBlob(file, record.filename, record.basePath)
+          loadImageFromBlob(file, record.filename, record.basePath, record.displayName)
         } catch {
-          setNotice(`Could not reopen ${record.filename}.`)
+          setNotice(`Could not reopen ${displayNameFor(record)}.`)
         }
         return
       }
 
-      loadImageFromUrl(`${record.basePath}${record.filename}`, record.filename, record.basePath)
+      loadImageFromUrl(`${record.basePath}${record.filename}`, record.filename, record.basePath, record.displayName)
     },
     [flushAnnotationSave, loadImageFromBlob, loadImageFromUrl],
   )
@@ -415,6 +442,7 @@ export default function App() {
     flushAnnotationSave()
     localStorage.removeItem(LS_IMAGE_KEY)
     localStorage.removeItem(LS_IMAGE_BASE_KEY)
+    localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
     detection.reset()
     setShowDetectionPanel(false)
     setNotice(null)
@@ -430,6 +458,24 @@ export default function App() {
     }
   }, [state.annotations, state.image])
 
+  const handleExportAnnotatedImage = useCallback(async () => {
+    if (!state.image) return
+    try {
+      await exportAnnotatedImage(state.image, state.annotations)
+    } catch {
+      setNotice('Could not export the annotated image.')
+    }
+  }, [state.annotations, state.image])
+
+  const handleExportOriginalImage = useCallback(async () => {
+    if (!state.image) return
+    try {
+      await exportOriginalImage(state.image)
+    } catch {
+      setNotice('Could not export the original image.')
+    }
+  }, [state.image])
+
   const handleExportJsonOnly = useCallback(() => {
     if (!state.image) return
     try {
@@ -443,7 +489,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem(annotationsStorageKey(record.filename, record.basePath))
       if (!saved) {
-        setNotice(`No saved annotations were found for ${record.filename}.`)
+        setNotice(`No saved annotations were found for ${displayNameFor(record)}.`)
         return
       }
 
@@ -451,25 +497,44 @@ export default function App() {
       if (isBrowserImageBasePath(record.basePath)) {
         const file = await getBrowserImageFromBasePath(record.basePath)
         if (!file) {
-          setNotice(`Could not export ${record.filename}. The saved image is no longer available.`)
+          setNotice(`Could not export ${displayNameFor(record)}. The saved image is no longer available.`)
           return
         }
 
-        await exportResultsFromBlob(file, record.filename, record.width, record.height, annotations)
+        await exportResultsFromBlob(
+          file,
+          record.filename,
+          record.displayName,
+          record.width,
+          record.height,
+          annotations,
+        )
         return
       }
 
       await exportResultsFromUrl(
         `${record.basePath}${record.filename}`,
         record.filename,
+        record.displayName,
         record.width,
         record.height,
         annotations,
       )
     } catch {
-      setNotice(`Could not export ${record.filename}.`)
+      setNotice(`Could not export ${displayNameFor(record)}.`)
     }
   }, [])
+
+  const handleRenameImage = useCallback(
+    (nextName: string | null) => {
+      if (!state.image) return
+      dispatch({
+        type: 'RENAME_IMAGE',
+        displayName: normalizeDisplayName(nextName, state.image.filename),
+      })
+    },
+    [state.image],
+  )
 
   const handleAgentDetect = useCallback(() => {
     if (!ENABLE_AUTOMATION || !state.image?.filename) return
@@ -493,17 +558,21 @@ export default function App() {
           <div className="flex h-full flex-col">
             <Toolbar
               automationEnabled={ENABLE_AUTOMATION}
+              currentDisplayName={state.image ? displayNameFor(state.image) : undefined}
               currentFilename={state.image?.filename}
               detecting={isDetecting}
               recentImages={recentImages}
               sampleImages={sampleImages}
               onDetect={handleAgentDetect}
+              onExportAnnotatedImage={handleExportAnnotatedImage}
               onExportJsonOnly={handleExportJsonOnly}
+              onExportOriginalImage={handleExportOriginalImage}
               onExportResults={handleExportResults}
               onFitToWindow={handleFitToWindow}
               onGoHome={handleGoHome}
               onOpenImageFile={openImageFile}
               onOpenRecentImage={handleOpenRecent}
+              onRenameImage={handleRenameImage}
               onOpenSampleImage={handleOpenSample}
             />
 
@@ -523,7 +592,9 @@ export default function App() {
               {state.image ? (
                 <>
                   <div className="relative flex-1">
+                    <WorkflowPanel />
                     <ImageToolOverlays />
+                    <MarkerVisibilityControl />
                     <Canvas vp={vp} onCanvasSize={handleCanvasSize} />
                     <Minimap vp={vp} canvasWidth={canvasSize[0]} canvasHeight={canvasSize[1]} zoomLevel={zoomLevel} />
                   </div>
@@ -550,7 +621,12 @@ export default function App() {
               )}
             </div>
 
-            <StatusBar onExportResults={handleExportResults} />
+            <StatusBar
+              onExportAnnotatedImage={handleExportAnnotatedImage}
+              onExportJsonOnly={handleExportJsonOnly}
+              onExportOriginalImage={handleExportOriginalImage}
+              onExportResults={handleExportResults}
+            />
             <HelpOverlay />
           </div>
         </div>

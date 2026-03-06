@@ -1,5 +1,6 @@
 import { FolderOpenIcon, HistoryIcon, ShieldCheckIcon, SparklesIcon } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
+import { displayNameFor } from '../lib/image-names'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
 import { Button } from './ui/button'
 
@@ -149,7 +150,7 @@ export default function WelcomeScreen({
                     <div key={record.id} className="rounded-xl border border-border bg-background/45 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{record.filename}</p>
+                          <p className="truncate text-sm font-medium text-foreground">{displayNameFor(record)}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
                           </p>

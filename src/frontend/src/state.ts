@@ -1,6 +1,6 @@
 import { createContext, type Dispatch, useContext } from 'react'
 import { normalizeAnnotations } from './lib/annotations'
-import type { Action, Annotation, AnnotationPatch, AppState, InteractionMode, UndoEntry } from './types'
+import type { Action, Annotation, AnnotationPatch, AppState, UndoEntry } from './types'
 
 export const initialState: AppState = {
   image: null,
@@ -12,8 +12,8 @@ export const initialState: AppState = {
   bboxCreationEnabled: false,
   showNumbers: true,
   showRejected: false,
+  markerVisibility: 'visible',
   helpVisible: false,
-  interactionMode: 'select' as InteractionMode,
   zoomSpeed: 1,
   undoStack: [],
   redoStack: [],
@@ -139,7 +139,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         annotations: [...state.annotations, action.annotation],
-        selectedIds: new Set([action.annotation.id]),
+        selectedIds: new Set(),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
       }
@@ -261,6 +261,16 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_ACTIVE_CATEGORY':
       return { ...state, activeCategory: action.category }
 
+    case 'RENAME_IMAGE':
+      if (!state.image) return state
+      return {
+        ...state,
+        image: {
+          ...state.image,
+          displayName: action.displayName,
+        },
+      }
+
     case 'DELETE_OR_REJECT': {
       const ids = new Set(action.ids)
       const patches: AnnotationPatch[] = []
@@ -360,6 +370,15 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'TOGGLE_REJECTED':
       return { ...state, showRejected: !state.showRejected }
 
+    case 'CYCLE_MARKER_VISIBILITY': {
+      const nextVisibility =
+        state.markerVisibility === 'visible' ? 'dimmed' : state.markerVisibility === 'dimmed' ? 'hidden' : 'visible'
+      return { ...state, markerVisibility: nextVisibility }
+    }
+
+    case 'SET_MARKER_VISIBILITY':
+      return { ...state, markerVisibility: action.visibility }
+
     case 'UNDO': {
       if (state.undoStack.length === 0) return state
       const entry = state.undoStack[state.undoStack.length - 1]!
@@ -384,12 +403,6 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'TOGGLE_HELP':
       return { ...state, helpVisible: !state.helpVisible }
-
-    case 'TOGGLE_INTERACTION_MODE':
-      return { ...state, interactionMode: state.interactionMode === 'select' ? 'add' : 'select' }
-
-    case 'SET_INTERACTION_MODE':
-      return { ...state, interactionMode: action.mode }
 
     case 'SET_ZOOM_SPEED':
       return { ...state, zoomSpeed: action.speed }

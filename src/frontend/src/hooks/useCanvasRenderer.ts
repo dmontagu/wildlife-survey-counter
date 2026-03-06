@@ -77,16 +77,16 @@ function drawCategoryIndicator(
   if (!category) return
 
   ctx.strokeStyle = stroke
-  ctx.lineWidth = 2
+  ctx.lineWidth = 2.6
 
   if (category === 'bull') {
     ctx.beginPath()
-    ctx.arc(x, y, radius + 1.5, 0, Math.PI * 2)
+    ctx.arc(x, y, radius + 2.5, 0, Math.PI * 2)
     ctx.stroke()
     return
   }
 
-  drawDiamond(ctx, x, y, radius + 3.5)
+  drawDiamond(ctx, x, y, radius + 4.75)
   ctx.stroke()
 }
 
@@ -154,7 +154,6 @@ export function useCanvasRenderer(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   state: AppState,
   vp: ViewportActions,
-  annotationsHidden: React.MutableRefObject<boolean>,
   selectionRect: React.MutableRefObject<SelectionRect | null>,
   lassoPath: React.MutableRefObject<LassoPath | null>,
   dragOverlay: React.MutableRefObject<DragOverlay>,
@@ -200,18 +199,28 @@ export function useCanvasRenderer(
         }
       }
 
-      // Draw annotations (ghosted at 20% when V held)
+      // Draw annotations using the current marker visibility mode
       if (state.image) {
-        if (annotationsHidden.current) ctx.globalAlpha = 0.2
         const visibleAnnotations = getVisibleAnnotations(state.annotations, {
           showRejected: state.showRejected,
           confidenceThreshold: state.confidenceThreshold,
         })
+        const orderedAnnotations =
+          state.markerVisibility === 'hidden'
+            ? []
+            : [
+                ...visibleAnnotations.filter((ann) => !state.selectedIds.has(ann.id)),
+                ...visibleAnnotations.filter((ann) => state.selectedIds.has(ann.id)),
+              ]
         const displayNumbers = getDisplayNumbers(visibleAnnotations)
         const margin = 20
         const overlay = dragOverlay.current
 
-        for (const ann of visibleAnnotations) {
+        if (state.markerVisibility !== 'hidden') {
+          ctx.globalAlpha = state.markerVisibility === 'dimmed' ? 0.24 : 1
+        }
+
+        for (const ann of orderedAnnotations) {
           const isDragging = overlay.annotationId === ann.id && overlay.dragPos
           const isResizing = overlay.bboxResizeDraft?.annotationId === ann.id
 
@@ -361,7 +370,7 @@ export function useCanvasRenderer(
 
     animFrameRef.current = requestAnimationFrame(render)
     return () => cancelAnimationFrame(animFrameRef.current)
-  }, [canvasRef, state, vp, annotationsHidden, selectionRect, lassoPath, dragOverlay])
+  }, [canvasRef, state, vp, selectionRect, lassoPath, dragOverlay])
 }
 
 function drawBboxHandles(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {

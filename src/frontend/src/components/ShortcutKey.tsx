@@ -9,6 +9,8 @@ const SHORTCUT_LABELS: Record<string, string> = {
   '\u2303': 'Ctrl',
   '\u21e7': 'Shift',
   '^': 'Ctrl',
+  Backspace: 'Backspace',
+  Delete: 'Delete',
   Escape: 'Esc',
 }
 

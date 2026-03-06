@@ -1,7 +1,6 @@
 export type AnnotationState = 'auto-detected' | 'confirmed' | 'rejected' | 'manually-added'
 export type AnnotationCategory = 'bull' | 'spike' | null
-
-export type InteractionMode = 'select' | 'add'
+export type MarkerVisibilityMode = 'visible' | 'dimmed' | 'hidden'
 
 export interface Annotation {
   id: number
@@ -18,6 +17,7 @@ export interface Annotation {
 
 export interface ImageInfo {
   filename: string
+  displayName: string | null
   width: number
   height: number
   element: HTMLImageElement
@@ -35,8 +35,8 @@ export interface AppState {
   bboxCreationEnabled: boolean
   showNumbers: boolean
   showRejected: boolean
+  markerVisibility: MarkerVisibilityMode
   helpVisible: boolean
-  interactionMode: InteractionMode
   zoomSpeed: number
   undoStack: UndoEntry[]
   redoStack: UndoEntry[]
@@ -52,6 +52,7 @@ export interface AnnotationSummary {
 export interface RecentImageRecord {
   id: string
   filename: string
+  displayName: string | null
   basePath: string
   width: number
   height: number
@@ -100,11 +101,12 @@ export type Action =
   | { type: 'TOGGLE_BBOX_CREATION' }
   | { type: 'TOGGLE_NUMBERS' }
   | { type: 'TOGGLE_REJECTED' }
+  | { type: 'CYCLE_MARKER_VISIBILITY' }
+  | { type: 'SET_MARKER_VISIBILITY'; visibility: MarkerVisibilityMode }
   | { type: 'UNDO' }
   | { type: 'REDO' }
   | { type: 'TOGGLE_HELP' }
-  | { type: 'TOGGLE_INTERACTION_MODE' }
-  | { type: 'SET_INTERACTION_MODE'; mode: InteractionMode }
   | { type: 'SET_ACTIVE_CATEGORY'; category: AnnotationCategory }
+  | { type: 'RENAME_IMAGE'; displayName: string | null }
   | { type: 'SET_ZOOM_SPEED'; speed: number }
   | { type: 'RESET_WORKSPACE' }

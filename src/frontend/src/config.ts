@@ -7,13 +7,9 @@ export const KEYS = {
   redo: { key: 'z', meta: true, shift: true },
   selectAll: { key: 'a', meta: true },
   deselect: ['Escape'],
-  hideAnnotations: ['v'],
+  cycleMarkerVisibility: ['v'],
   help: ['?'],
-  setAddMode: ['a'],
-  setSelectMode: ['Escape'],
-  setCowCategory: ['c'],
-  setBullCategory: ['b'],
-  setSpikeCategory: ['s'],
+  cycleCategory: ['e'],
 }
 
 /** Zoom speed bounds */
@@ -28,7 +24,6 @@ export interface LabelCategoryOption {
   id: AnnotationCategory
   label: string
   badge: string
-  shortcut: string
   description: string
 }
 
@@ -37,21 +32,18 @@ export const ELK_CATEGORY_OPTIONS: LabelCategoryOption[] = [
     id: null,
     label: 'Cow',
     badge: 'COW',
-    shortcut: 'C',
     description: 'Set new markers to cow and clear special status on the current selection',
   },
   {
     id: 'bull',
     label: 'Bull',
     badge: 'B',
-    shortcut: 'B',
     description: 'Set new markers to bull and update the current selection',
   },
   {
     id: 'spike',
     label: 'Spike',
     badge: 'S',
-    shortcut: 'S',
     description: 'Set new markers to spike and update the current selection',
   },
 ]

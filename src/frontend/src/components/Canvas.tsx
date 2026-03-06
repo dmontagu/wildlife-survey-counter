@@ -11,7 +11,16 @@ import type { ViewportActions } from '../hooks/useViewport'
 import { useAppState, useDispatch } from '../state'
 import type { Annotation, AppState } from '../types'
 
-type DragType = 'select-rect' | 'move-annotation' | 'add-annotation' | 'resize-bbox' | 'move-bbox' | 'pan' | null
+type DragType =
+  | 'select-rect'
+  | 'move-annotation'
+  | 'add-annotation'
+  | 'add-bbox'
+  | 'resize-bbox'
+  | 'move-bbox'
+  | 'pan'
+  | 'pan-empty'
+  | null
 type HandleType = 'nw' | 'n' | 'ne' | 'w' | 'e' | 'sw' | 's' | 'se' | 'interior'
 
 interface BboxHandle {
@@ -53,8 +62,9 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
   const dispatch = useDispatch()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const hasSelection = state.selectedIds.size > 0
+  const idleCursor = hasSelection ? 'grab' : 'crosshair'
 
-  const annotationsHidden = useRef(false)
   const selectionRect = useRef<SelectionRect | null>(null)
   const lassoPath = useRef<LassoPath | null>(null)
   const dragOverlay = useRef<DragOverlay>({
@@ -95,10 +105,11 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         return
       }
       if (action.type === 'SET_ACTIVE_CATEGORY') {
-        dispatch(action)
         if (state.selectedIds.size > 0) {
           dispatch({ type: 'SET_CATEGORY', ids: [...state.selectedIds], category: action.category })
+          return
         }
+        dispatch(action)
         return
       }
       dispatch(action)
@@ -106,8 +117,24 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     [dispatch, state.selectedIds],
   )
 
-  useKeyboard(wrappedDispatch, annotationsHidden, vp.dirty)
-  useCanvasRenderer(canvasRef, state, vp, annotationsHidden, selectionRect, lassoPath, dragOverlay)
+  useKeyboard(
+    wrappedDispatch,
+    vp.dirty,
+    hasSelection
+      ? (state.annotations.find((annotation) => state.selectedIds.has(annotation.id))?.category ?? null)
+      : state.activeCategory,
+  )
+  useCanvasRenderer(canvasRef, state, vp, selectionRect, lassoPath, dragOverlay)
+
+  const addAnnotation = useCallback(
+    (annotation: Annotation) => {
+      if (state.markerVisibility === 'hidden') {
+        dispatch({ type: 'SET_MARKER_VISIBILITY', visibility: 'visible' })
+      }
+      dispatch({ type: 'ADD_ANNOTATION', annotation })
+    },
+    [dispatch, state.markerVisibility],
+  )
 
   // Resize canvas to fill container
   useEffect(() => {
@@ -148,12 +175,12 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     vp.fitToWindow(state.image.width, state.image.height, width, height)
   }, [state.image, vp])
 
-  // Update cursor immediately when interaction mode changes
+  // Update cursor immediately when selection state changes
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || spaceHeld.current) return
-    canvas.style.cursor = state.interactionMode === 'add' ? 'crosshair' : 'default'
-  }, [state.interactionMode, spaceHeld])
+    canvas.style.cursor = idleCursor
+  }, [idleCursor, spaceHeld])
 
   // Wheel handler
   useEffect(() => {
@@ -190,12 +217,12 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     function onKeyUp(e: KeyboardEvent) {
       if (e.code === 'Space') {
         spaceHeld.current = false
-        canvas!.style.cursor = metaHeld.current ? 'grab' : ''
+        canvas!.style.cursor = 'grab'
       }
       if (e.key === 'Meta' || e.key === 'Control') {
         metaHeld.current = false
         if (!spaceHeld.current && !isDragging.current) {
-          canvas!.style.cursor = ''
+          canvas!.style.cursor = idleCursor
         }
       }
     }
@@ -217,7 +244,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       window.removeEventListener('keyup', onKeyUp)
       document.removeEventListener('mousemove', onMouseMoveRaw)
     }
-  }, [vp, spaceHeld])
+  }, [idleCursor, vp, spaceHeld])
 
   const getCanvasPos = useCallback((e: React.MouseEvent): [number, number] => {
     const rect = canvasRef.current!.getBoundingClientRect()
@@ -294,9 +321,9 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       dragAnnotationOrigPos.current = null
       dragBboxHandle.current = null
 
-      // Priority 1: Alt → force create when bbox creation is enabled
+      // Priority 1: Alt → draw bbox when advanced bbox mode is enabled
       if (e.altKey && state.bboxCreationEnabled) {
-        dragType.current = 'add-annotation'
+        dragType.current = 'add-bbox'
         return
       }
 
@@ -350,12 +377,11 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         return
       }
 
-      // Priority 6: Mode-dependent
-      if (state.interactionMode === 'add') {
+      // Priority 6: Empty canvas → click adds if nothing is selected, otherwise click clears selection.
+      if (!hasSelection) {
         dragType.current = 'add-annotation'
       } else {
-        dispatch({ type: 'DESELECT_ALL' })
-        dragType.current = 'select-rect'
+        dragType.current = 'pan-empty'
       }
     },
     [
@@ -366,7 +392,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       state.bboxCreationEnabled,
       state.selectedIds,
       state.annotations,
-      state.interactionMode,
+      hasSelection,
       vp,
       spaceHeld,
     ],
@@ -423,15 +449,15 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         return
       }
 
-      // Add mode on empty → crosshair
-      if (state.interactionMode === 'add') {
+      // Shift on empty → box-select crosshair
+      if (e.shiftKey) {
         canvas.style.cursor = 'crosshair'
         return
       }
 
-      canvas.style.cursor = 'default'
+      canvas.style.cursor = idleCursor
     },
-    [getCanvasPos, findBboxHandleAt, findAnnotationAt, state.bboxCreationEnabled, state.interactionMode, spaceHeld],
+    [getCanvasPos, findBboxHandleAt, findAnnotationAt, idleCursor, state.bboxCreationEnabled, spaceHeld],
   )
 
   const onMouseMove = useCallback(
@@ -464,14 +490,12 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         const [ix, iy] = vp.screenToImage(sx, sy)
         dragOverlay.current.dragPos = { x: Math.round(ix), y: Math.round(iy) }
         vp.dirty.current = true
-      } else if (dt === 'add-annotation') {
-        if (state.bboxCreationEnabled) {
-          dragOverlay.current.bboxDraft = {
-            startX,
-            startY,
-            endX: sx,
-            endY: sy,
-          }
+      } else if (dt === 'add-bbox') {
+        dragOverlay.current.bboxDraft = {
+          startX,
+          startY,
+          endX: sx,
+          endY: sy,
         }
         vp.dirty.current = true
       } else if (dt === 'resize-bbox' || dt === 'move-bbox') {
@@ -511,17 +535,19 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
           bbox: [Math.min(nx1, nx2), Math.min(ny1, ny2), Math.max(nx1, nx2), Math.max(ny1, ny2)],
         }
         vp.dirty.current = true
-      } else if (dt === 'pan' || dt === null) {
-        // Pan: middle mouse, Cmd/Ctrl+drag, Space+drag, or fallthrough
+      } else if (dt === 'pan' || dt === 'pan-empty' || dt === 'add-annotation' || dt === null) {
+        // Pan: middle mouse, modifier drag, Space pan, or empty-canvas drag.
         if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
         vp.viewport.current.offsetX += e.movementX
         vp.viewport.current.offsetY += e.movementY
         vp.clampViewport()
         vp.dirty.current = true
-        dragType.current = 'pan'
+        if (dt === null) {
+          dragType.current = 'pan'
+        }
       }
     },
-    [getCanvasPos, state.bboxCreationEnabled, vp, updateCursor, spaceHeld],
+    [getCanvasPos, vp, updateCursor, spaceHeld],
   )
 
   const onMouseUp = useCallback(
@@ -529,41 +555,33 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       const [sx, sy] = getCanvasPos(e)
       const dt = dragType.current
 
-      // Handle add-annotation: click = point, drag = bbox (fallback to point if bbox too small)
-      if (dt === 'add-annotation') {
+      // Handle add mode: click = point, drag = pan unless advanced bbox drawing was requested.
+      if (dt === 'add-annotation' && !isDragging.current) {
         const [ix, iy] = vp.screenToImage(sx, sy)
         if (state.image && ix >= 0 && iy >= 0 && ix <= state.image.width && iy <= state.image.height) {
-          if (state.bboxCreationEnabled && isDragging.current && dragOverlay.current.bboxDraft) {
+          addAnnotation(makeAnnotation(state, Math.round(ix), Math.round(iy), null))
+        }
+      }
+
+      if (dt === 'add-bbox') {
+        const [ix, iy] = vp.screenToImage(sx, sy)
+        if (state.image && ix >= 0 && iy >= 0 && ix <= state.image.width && iy <= state.image.height) {
+          if (isDragging.current && dragOverlay.current.bboxDraft) {
             const draft = dragOverlay.current.bboxDraft
             const [ix1, iy1] = vp.screenToImage(Math.min(draft.startX, draft.endX), Math.min(draft.startY, draft.endY))
             const [ix2, iy2] = vp.screenToImage(Math.max(draft.startX, draft.endX), Math.max(draft.startY, draft.endY))
 
             if (Math.abs(ix2 - ix1) > 3 && Math.abs(iy2 - iy1) > 3) {
-              // Large enough for bbox
               const cx = Math.round((ix1 + ix2) / 2)
               const cy = Math.round((iy1 + iy2) / 2)
-              dispatch({
-                type: 'ADD_ANNOTATION',
-                annotation: makeAnnotation(state, cx, cy, [
-                  Math.round(ix1),
-                  Math.round(iy1),
-                  Math.round(ix2),
-                  Math.round(iy2),
-                ]),
-              })
+              addAnnotation(
+                makeAnnotation(state, cx, cy, [Math.round(ix1), Math.round(iy1), Math.round(ix2), Math.round(iy2)]),
+              )
             } else {
-              // Too small for bbox — add point at click location
-              dispatch({
-                type: 'ADD_ANNOTATION',
-                annotation: makeAnnotation(state, Math.round(ix), Math.round(iy), null),
-              })
+              addAnnotation(makeAnnotation(state, Math.round(ix), Math.round(iy), null))
             }
           } else {
-            // No drag — add point
-            dispatch({
-              type: 'ADD_ANNOTATION',
-              annotation: makeAnnotation(state, Math.round(ix), Math.round(iy), null),
-            })
+            addAnnotation(makeAnnotation(state, Math.round(ix), Math.round(iy), null))
           }
         }
       }
@@ -637,8 +655,15 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         vp.dirty.current = true
       }
 
+      if (dt === 'pan-empty' && !isDragging.current) {
+        dispatch({ type: 'DESELECT_ALL' })
+      }
+
       // Reset all drag state
-      const wasPan = dragType.current === 'pan'
+      const wasPan =
+        dragType.current === 'pan' ||
+        dragType.current === 'pan-empty' ||
+        (dragType.current === 'add-annotation' && isDragging.current)
       dragOverlay.current = {
         annotationId: null,
         dragPos: null,
@@ -658,11 +683,11 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         } else if (e.metaKey || e.ctrlKey) {
           canvasRef.current.style.cursor = 'grab'
         } else {
-          canvasRef.current.style.cursor = ''
+          canvasRef.current.style.cursor = idleCursor
         }
       }
     },
-    [state, vp, getCanvasPos, dispatch, spaceHeld],
+    [addAnnotation, dispatch, getCanvasPos, idleCursor, spaceHeld, state, vp],
   )
 
   const onDoubleClick = useCallback(

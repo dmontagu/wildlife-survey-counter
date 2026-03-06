@@ -17,6 +17,7 @@ function normalizeRecord(raw: unknown): RecentImageRecord | null {
   return {
     id: typeof data.id === 'string' ? data.id : imageStorageId(filename, basePath),
     filename,
+    displayName: typeof data.displayName === 'string' ? data.displayName : null,
     basePath,
     width: typeof data.width === 'number' ? data.width : 0,
     height: typeof data.height === 'number' ? data.height : 0,

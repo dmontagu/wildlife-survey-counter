@@ -1,6 +1,7 @@
 import { categoryColorFor, MARKER_HALO_COLOR, markerColorFor, textColorFor } from '../colors'
 import type { Annotation, ImageInfo } from '../types'
 import { categoryBadgeLabel, getDisplayNumbers, summarizeAnnotations } from './annotations'
+import { displayNameFor, extensionForFilename, stemForFilename } from './image-names'
 import { loadImageElement, loadImageElementFromBlob } from './images'
 
 function drawRoundedRect(
@@ -33,6 +34,38 @@ function drawDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, radius
   ctx.closePath()
 }
 
+function exportMimeTypeFor(filename: string): string {
+  const extension = extensionForFilename(filename)
+  if (extension === 'png') return 'image/png'
+  if (extension === 'webp') return 'image/webp'
+  return 'image/jpeg'
+}
+
+function exportExtensionFor(filename: string): string {
+  const extension = extensionForFilename(filename)
+  if (extension === 'png' || extension === 'webp') return extension
+  return 'jpg'
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+function renderSourceCanvas(image: HTMLImageElement): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = image.width
+  canvas.height = image.height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Could not create export canvas')
+  ctx.drawImage(image, 0, 0)
+  return canvas
+}
+
 function drawCategoryIndicator(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -45,26 +78,17 @@ function drawCategoryIndicator(
   if (!category) return
 
   ctx.strokeStyle = stroke
-  ctx.lineWidth = Math.max(1.5, 2 * scale)
+  ctx.lineWidth = Math.max(2, 2.5 * scale)
 
   if (category === 'bull') {
     ctx.beginPath()
-    ctx.arc(x, y, radius + Math.max(1.5, 1.5 * scale), 0, Math.PI * 2)
+    ctx.arc(x, y, radius + Math.max(2.5, 2.5 * scale), 0, Math.PI * 2)
     ctx.stroke()
     return
   }
 
-  drawDiamond(ctx, x, y, radius + Math.max(3, 3.5 * scale))
+  drawDiamond(ctx, x, y, radius + Math.max(4.5, 4.75 * scale))
   ctx.stroke()
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(url)
 }
 
 function drawCategoryBadge(
@@ -130,10 +154,18 @@ function drawAnnotationBbox(
   ctx.restore()
 }
 
+async function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality = 0.92): Promise<Blob> {
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, mimeType, quality)
+  })
+  if (!blob) throw new Error('Could not create export image')
+  return blob
+}
+
 function renderAnnotatedCanvas(
   image: HTMLImageElement,
   annotations: Annotation[],
-  filename: string,
+  imageLabel: string,
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
   canvas.width = image.width
@@ -185,58 +217,91 @@ function renderAnnotatedCanvas(
   }
 
   const summary = summarizeAnnotations(annotations)
-  const panelWidth = Math.max(220, image.width * 0.18)
-  const panelHeight = 86
-  const panelX = image.width - panelWidth - 16
+  const panelScale = Math.min(2.6, Math.max(1, Math.max(image.width, image.height) / 1600))
+  const panelWidth = Math.max(220, 236 * panelScale)
+  const panelHeight = 68 * panelScale
+  const panelX = 16
   const panelY = 16
+  const paddingX = 12 * panelScale
+  const titleY = panelY + 22 * panelScale
+  const line1Y = panelY + 44 * panelScale
+  const line2Y = panelY + 63 * panelScale
 
-  ctx.fillStyle = 'rgba(22, 28, 24, 0.82)'
-  ctx.fillRect(panelX, panelY, panelWidth, panelHeight)
+  ctx.fillStyle = 'rgba(22, 28, 24, 0.84)'
+  drawRoundedRect(ctx, panelX, panelY, panelWidth, panelHeight, 12 * panelScale)
+  ctx.fill()
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
-  ctx.lineWidth = 1
-  ctx.strokeRect(panelX, panelY, panelWidth, panelHeight)
+  ctx.lineWidth = Math.max(1, panelScale)
+  ctx.stroke()
 
   ctx.fillStyle = '#F5F5F0'
   ctx.textAlign = 'left'
   ctx.textBaseline = 'alphabetic'
-  ctx.font = 'bold 14px sans-serif'
-  ctx.fillText(filename, panelX + 12, panelY + 22)
-  ctx.font = '12px sans-serif'
-  ctx.fillText(`Counted: ${summary.counted}`, panelX + 12, panelY + 42)
-  ctx.fillText(`Bulls: ${summary.bulls}`, panelX + 12, panelY + 58)
-  ctx.fillText(`Spikes: ${summary.spikes}`, panelX + 110, panelY + 58)
-  ctx.fillText(`Ignored: ${summary.ignored}`, panelX + 12, panelY + 74)
+  ctx.font = `bold ${14 * panelScale}px sans-serif`
+  ctx.fillText(imageLabel, panelX + paddingX, titleY)
+  ctx.font = `${12 * panelScale}px sans-serif`
+  ctx.fillText(`Counted: ${summary.counted}`, panelX + paddingX, line1Y)
+  ctx.fillText(`Bulls: ${summary.bulls}`, panelX + paddingX, line2Y)
+  ctx.fillText(`Spikes: ${summary.spikes}`, panelX + 112 * panelScale, line2Y)
 
   return canvas
 }
 
+function buildExportNames(image: Pick<ImageInfo, 'filename' | 'displayName'>) {
+  const imageLabel = displayNameFor(image)
+  const labelStem = stemForFilename(imageLabel)
+  const sourceExtension = exportExtensionFor(image.filename)
+
+  return {
+    imageLabel,
+    annotatedFilename: `review_${labelStem}.jpg`,
+    jsonFilename: `annotations_${labelStem}.json`,
+    originalFilename: `original_${labelStem}.${sourceExtension}`,
+  }
+}
+
 export function buildExportPayload(
-  image: Pick<ImageInfo, 'filename' | 'width' | 'height'>,
+  image: Pick<ImageInfo, 'filename' | 'displayName' | 'width' | 'height'>,
   annotations: Annotation[],
 ) {
+  const { imageLabel } = buildExportNames(image)
+
   return {
-    image,
+    image: {
+      filename: imageLabel,
+      sourceFilename: image.filename,
+      width: image.width,
+      height: image.height,
+    },
     summary: summarizeAnnotations(annotations),
     annotations,
   }
 }
 
-export async function exportResults(image: ImageInfo, annotations: Annotation[]) {
-  const payload = buildExportPayload(image, annotations)
-  const jsonBlob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  downloadBlob(jsonBlob, `annotations_${image.filename}.json`)
+export async function exportAnnotatedImage(image: ImageInfo, annotations: Annotation[]) {
+  const { imageLabel, annotatedFilename } = buildExportNames(image)
+  const annotatedCanvas = renderAnnotatedCanvas(image.element, annotations, imageLabel)
+  const reviewBlob = await canvasToBlob(annotatedCanvas, 'image/jpeg')
+  downloadBlob(reviewBlob, annotatedFilename)
+}
 
-  const annotatedCanvas = renderAnnotatedCanvas(image.element, annotations, image.filename)
-  const reviewBlob = await new Promise<Blob | null>((resolve) => {
-    annotatedCanvas.toBlob(resolve, 'image/jpeg', 0.92)
-  })
-  if (!reviewBlob) throw new Error('Could not export review image')
-  downloadBlob(reviewBlob, `review_${image.filename.replace(/\.[^.]+$/, '')}.jpg`)
+export async function exportOriginalImage(image: ImageInfo) {
+  const { originalFilename } = buildExportNames(image)
+  const sourceCanvas = renderSourceCanvas(image.element)
+  const mimeType = exportMimeTypeFor(image.filename)
+  const originalBlob = await canvasToBlob(sourceCanvas, mimeType)
+  downloadBlob(originalBlob, originalFilename)
+}
+
+export async function exportResults(image: ImageInfo, annotations: Annotation[]) {
+  exportJsonOnly(image, annotations)
+  await exportAnnotatedImage(image, annotations)
 }
 
 export async function exportResultsFromUrl(
   url: string,
   filename: string,
+  displayName: string | null,
   width: number,
   height: number,
   annotations: Annotation[],
@@ -245,6 +310,7 @@ export async function exportResultsFromUrl(
   await exportResults(
     {
       filename,
+      displayName,
       width: width || image.width,
       height: height || image.height,
       element: image,
@@ -257,6 +323,7 @@ export async function exportResultsFromUrl(
 export async function exportResultsFromBlob(
   blob: Blob,
   filename: string,
+  displayName: string | null,
   width: number,
   height: number,
   annotations: Annotation[],
@@ -265,6 +332,7 @@ export async function exportResultsFromBlob(
   await exportResults(
     {
       filename,
+      displayName,
       width: width || image.width,
       height: height || image.height,
       element: image,
@@ -274,8 +342,12 @@ export async function exportResultsFromBlob(
   )
 }
 
-export function exportJsonOnly(image: ImageInfo, annotations: Annotation[]) {
+export function exportJsonOnly(
+  image: Pick<ImageInfo, 'filename' | 'displayName' | 'width' | 'height'>,
+  annotations: Annotation[],
+) {
   const payload = buildExportPayload(image, annotations)
+  const { jsonFilename } = buildExportNames(image)
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  downloadBlob(blob, `annotations_${image.filename}.json`)
+  downloadBlob(blob, jsonFilename)
 }

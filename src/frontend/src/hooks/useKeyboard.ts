@@ -1,34 +1,46 @@
 import type { Dispatch } from 'react'
 import { useEffect } from 'react'
 import { KEYS } from '../config'
-import type { Action } from '../types'
+import type { Action, AnnotationCategory } from '../types'
+
+function normalizedKey(value: string): string {
+  return value.length === 1 ? value.toLowerCase() : value
+}
 
 function matchesKey(
   e: KeyboardEvent,
   binding: string | string[] | { key: string; meta?: boolean; shift?: boolean },
 ): boolean {
   if (Array.isArray(binding)) {
-    return binding.some((k) => e.key === k && !e.metaKey && !e.ctrlKey)
+    return binding.some((k) => normalizedKey(e.key) === normalizedKey(k) && !e.metaKey && !e.ctrlKey)
   }
   if (typeof binding === 'string') {
-    return e.key === binding && !e.metaKey && !e.ctrlKey
+    return normalizedKey(e.key) === normalizedKey(binding) && !e.metaKey && !e.ctrlKey
   }
   const meta = e.metaKey || e.ctrlKey
-  return e.key === binding.key && meta === !!binding.meta && e.shiftKey === !!binding.shift
+  return (
+    normalizedKey(e.key) === normalizedKey(binding.key) && meta === !!binding.meta && e.shiftKey === !!binding.shift
+  )
+}
+
+function nextCategory(category: AnnotationCategory): AnnotationCategory {
+  if (category === null) return 'bull'
+  if (category === 'bull') return 'spike'
+  return null
 }
 
 export function useKeyboard(
   dispatch: Dispatch<Action>,
-  annotationsHidden: React.MutableRefObject<boolean>,
   dirty: React.MutableRefObject<boolean>,
+  activeCategory: AnnotationCategory,
 ) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       // Don't capture when typing in inputs
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
-      if (matchesKey(e, KEYS.hideAnnotations)) {
-        annotationsHidden.current = true
+      if (matchesKey(e, KEYS.cycleMarkerVisibility)) {
+        dispatch({ type: 'CYCLE_MARKER_VISIBILITY' })
         dirty.current = true
         return
       }
@@ -63,13 +75,6 @@ export function useKeyboard(
         return
       }
 
-      if (matchesKey(e, KEYS.setSelectMode)) {
-        e.preventDefault()
-        dispatch({ type: 'SET_INTERACTION_MODE', mode: 'select' })
-        dispatch({ type: 'DESELECT_ALL' })
-        return
-      }
-
       if (matchesKey(e, KEYS.deselect)) {
         dispatch({ type: 'DESELECT_ALL' })
         return
@@ -80,46 +85,15 @@ export function useKeyboard(
         return
       }
 
-      if (matchesKey(e, KEYS.setAddMode)) {
-        dispatch({ type: 'SET_INTERACTION_MODE', mode: 'add' })
+      if (matchesKey(e, KEYS.cycleCategory)) {
+        dispatch({ type: 'SET_ACTIVE_CATEGORY', category: nextCategory(activeCategory) })
         return
       }
-
-      if (matchesKey(e, KEYS.setCowCategory)) {
-        dispatch({ type: 'SET_ACTIVE_CATEGORY', category: null })
-        return
-      }
-
-      if (matchesKey(e, KEYS.setBullCategory)) {
-        dispatch({ type: 'SET_ACTIVE_CATEGORY', category: 'bull' })
-        return
-      }
-
-      if (matchesKey(e, KEYS.setSpikeCategory)) {
-        dispatch({ type: 'SET_ACTIVE_CATEGORY', category: 'spike' })
-        return
-      }
-    }
-
-    function onKeyUp(e: KeyboardEvent) {
-      if (e.key === 'v') {
-        annotationsHidden.current = false
-        dirty.current = true
-      }
-    }
-
-    function onBlur() {
-      annotationsHidden.current = false
-      dirty.current = true
     }
 
     window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('keyup', onKeyUp)
-    window.addEventListener('blur', onBlur)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('blur', onBlur)
     }
-  }, [dispatch, annotationsHidden, dirty])
+  }, [activeCategory, dirty, dispatch])
 }
