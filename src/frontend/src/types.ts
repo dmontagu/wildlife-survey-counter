@@ -49,6 +49,8 @@ export interface AnnotationSummary {
   spikes: number
 }
 
+export type RecentImagesSortMode = 'last-edited' | 'alphabetical'
+
 export interface RecentImageRecord {
   id: string
   filename: string
@@ -56,7 +58,7 @@ export interface RecentImageRecord {
   basePath: string
   width: number
   height: number
-  lastOpenedAt: string
+  lastEditedAt: string
   counted: number
   ignored: number
   bulls: number

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FEEDBACK_FORM_URL, UPDATES_FORM_ACTION, UPDATES_FORM_EMAIL_FIELD } from '../config'
 import { getBrowserImageFromBasePath, isBrowserImageBasePath } from '../lib/browser-images'
 import { displayNameFor, normalizeDisplayName } from '../lib/image-names'
-import type { RecentImageRecord, ServerImageRecord } from '../types'
+import type { RecentImageRecord, RecentImagesSortMode, ServerImageRecord } from '../types'
 import BrandMark from './BrandMark'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
@@ -11,7 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 interface WelcomeScreenProps {
   notice?: string | null
   recentImages: RecentImageRecord[]
+  recentImagesSort: RecentImagesSortMode
   sampleImages: ServerImageRecord[]
+  onChangeRecentImagesSort: (sortMode: RecentImagesSortMode) => void
+  onExportAllJson: () => void
   onDeleteRecentImage: (record: RecentImageRecord) => Promise<void>
   onExportRecent: (record: RecentImageRecord) => void
   onOpenImageFile: (file: File) => Promise<void>
@@ -28,7 +31,10 @@ const QUICK_STEPS = [
 
 export default function WelcomeScreen({
   recentImages,
+  recentImagesSort,
   sampleImages,
+  onChangeRecentImagesSort,
+  onExportAllJson,
   onDeleteRecentImage,
   onExportRecent,
   onOpenImageFile,
@@ -45,7 +51,7 @@ export default function WelcomeScreen({
   const [draftName, setDraftName] = useState('')
   const [updatesEmail, setUpdatesEmail] = useState('')
   const [updatesSubmitted, setUpdatesSubmitted] = useState(false)
-  const topRecent = useMemo(() => recentImages.slice(0, 8), [recentImages])
+  const previewCandidates = useMemo(() => recentImages.slice(0, 48), [recentImages])
 
   useEffect(() => {
     let cancelled = false
@@ -53,7 +59,7 @@ export default function WelcomeScreen({
 
     async function loadPreviews() {
       const entries = await Promise.all(
-        topRecent.map(async (record) => {
+        previewCandidates.map(async (record) => {
           if (!isBrowserImageBasePath(record.basePath)) {
             return [record.id, `${record.basePath}${record.filename}`] as const
           }
@@ -88,7 +94,7 @@ export default function WelcomeScreen({
       cancelled = true
       for (const url of objectUrls) URL.revokeObjectURL(url)
     }
-  }, [topRecent])
+  }, [previewCandidates])
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -303,69 +309,101 @@ export default function WelcomeScreen({
               </div>
 
               {recentImages.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Sort
+                    </span>
+                    <Button
+                      size="xs"
+                      variant={recentImagesSort === 'last-edited' ? 'secondary' : 'outline'}
+                      onClick={() => onChangeRecentImagesSort('last-edited')}
+                    >
+                      Last edited
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant={recentImagesSort === 'alphabetical' ? 'secondary' : 'outline'}
+                      onClick={() => onChangeRecentImagesSort('alphabetical')}
+                    >
+                      Alphabetical
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+
+              {recentImages.length > 0 ? (
                 <div className="space-y-3">
-                  {topRecent.map((record) => (
-                    <div key={record.id} className="rounded-xl border border-border bg-background/45 p-3">
-                      <div className="flex items-start gap-3">
-                        <button
-                          type="button"
-                          onClick={() => onOpenRecentImage(record)}
-                          className="relative mt-0.5 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background/70"
-                          aria-label={`Open ${displayNameFor(record)}`}
-                        >
-                          {previewUrls[record.id] ? (
-                            <img
-                              src={previewUrls[record.id]}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                              draggable={false}
-                            />
-                          ) : (
-                            <ImageIcon className="size-5 text-muted-foreground/70" />
-                          )}
-                        </button>
+                  <div className="max-h-[42rem] space-y-3 overflow-y-auto pr-1">
+                    {recentImages.map((record) => (
+                      <div key={record.id} className="rounded-xl border border-border bg-background/45 p-3">
+                        <div className="flex items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={() => onOpenRecentImage(record)}
+                            className="relative mt-0.5 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background/70"
+                            aria-label={`Open ${displayNameFor(record)}`}
+                          >
+                            {previewUrls[record.id] ? (
+                              <img
+                                src={previewUrls[record.id]}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                draggable={false}
+                              />
+                            ) : (
+                              <ImageIcon className="size-5 text-muted-foreground/70" />
+                            )}
+                          </button>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">{displayNameFor(record)}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {record.width} × {record.height}px
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                Last opened {new Date(record.lastOpenedAt).toLocaleString()}
-                              </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-foreground">{displayNameFor(record)}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {record.width} × {record.height}px
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Last edited {new Date(record.lastEditedAt).toLocaleString()}
+                                </p>
+                              </div>
+                              <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                onClick={() => void handleDeleteClick(record)}
+                                aria-label={`Delete ${displayNameFor(record)} from recent work`}
+                              >
+                                <Trash2Icon className="size-3.5" />
+                              </Button>
                             </div>
-                            <Button
-                              size="icon-xs"
-                              variant="ghost"
-                              onClick={() => void handleDeleteClick(record)}
-                              aria-label={`Delete ${displayNameFor(record)} from recent work`}
-                            >
-                              <Trash2Icon className="size-3.5" />
-                            </Button>
-                          </div>
 
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button size="xs" variant="outline" onClick={() => onOpenRecentImage(record)}>
-                              Open
-                            </Button>
-                            <Button size="xs" variant="outline" onClick={() => openRenameDialog(record)}>
-                              <PencilLineIcon className="size-3.5" />
-                              Rename
-                            </Button>
-                            <Button size="xs" variant="secondary" onClick={() => void onExportRecent(record)}>
-                              Export
-                            </Button>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <Button size="xs" variant="outline" onClick={() => onOpenRecentImage(record)}>
+                                Open
+                              </Button>
+                              <Button size="xs" variant="outline" onClick={() => openRenameDialog(record)}>
+                                <PencilLineIcon className="size-3.5" />
+                                Rename
+                              </Button>
+                              <Button size="xs" variant="secondary" onClick={() => void onExportRecent(record)}>
+                                Export
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button size="sm" variant="outline" onClick={onExportAllJson}>
+                      Export saved annotations
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm leading-6 text-muted-foreground">

@@ -4,6 +4,14 @@ import { categoryBadgeLabel, getDisplayNumbers, summarizeAnnotations } from './a
 import { displayNameFor, extensionForFilename, stemForFilename } from './image-names'
 import { loadImageElement, loadImageElementFromBlob } from './images'
 
+interface BulkJsonImageExport {
+  filename: string
+  displayName: string | null
+  width: number
+  height: number
+  annotations: Annotation[]
+}
+
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -350,4 +358,24 @@ export function exportJsonOnly(
   const { jsonFilename } = buildExportNames(image)
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
   downloadBlob(blob, jsonFilename)
+}
+
+export function exportCombinedJsonOnly(images: BulkJsonImageExport[]) {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    imageCount: images.length,
+    images: images.map((image) => ({
+      image: {
+        filename: image.filename,
+        displayName: image.displayName,
+        width: image.width,
+        height: image.height,
+      },
+      summary: summarizeAnnotations(image.annotations),
+      annotations: image.annotations,
+    })),
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  downloadBlob(blob, 'annotations_all_saved_work.json')
 }

@@ -1,6 +1,6 @@
 import { Redo2Icon, Trash2Icon, Undo2Icon } from 'lucide-react'
 import type { ComponentType } from 'react'
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import Canvas from './components/Canvas'
 import HelpOverlay from './components/HelpOverlay'
 import ImageToolOverlays from './components/ImageToolOverlays'
@@ -24,6 +24,7 @@ import {
 } from './lib/browser-images'
 import {
   exportAnnotatedImage,
+  exportCombinedJsonOnly,
   exportJsonOnly,
   exportOriginalImage,
   exportResults,
@@ -32,7 +33,7 @@ import {
 } from './lib/export'
 import { displayNameFor, normalizeDisplayName } from './lib/image-names'
 import { stripImageMetadata } from './lib/images'
-import { readRecentImages, removeRecentImage, upsertRecentImage } from './lib/recent-images'
+import { readRecentImages, removeRecentImage, sortRecentImages, upsertRecentImage } from './lib/recent-images'
 import {
   annotationsStorageKey,
   LS_ACTIVE_CATEGORY_KEY,
@@ -41,12 +42,13 @@ import {
   LS_IMAGE_DISPLAY_NAME_KEY,
   LS_IMAGE_KEY,
   LS_MARKER_VISIBILITY_KEY,
+  LS_RECENT_IMAGES_SORT_KEY,
   LS_ZOOM_SPEED_KEY,
   legacyAnnotationsStorageKey,
 } from './lib/storage'
 import { platformModifier } from './platform'
 import { AppStateContext, DispatchContext, initialState, reducer } from './state'
-import type { Annotation, RecentImageRecord, ServerImageRecord } from './types'
+import type { Annotation, RecentImageRecord, RecentImagesSortMode, ServerImageRecord } from './types'
 
 interface PendingSave {
   filename: string
@@ -141,8 +143,13 @@ export default function App() {
   const [canvasSize, setCanvasSize] = useState<[number, number]>([800, 600])
   const restoredRef = useRef(false)
   const [recentImages, setRecentImages] = useState<RecentImageRecord[]>([])
+  const [recentImagesSort, setRecentImagesSort] = useState<RecentImagesSortMode>('last-edited')
   const [sampleImages, setSampleImages] = useState<ServerImageRecord[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const sortedRecentImages = useMemo(
+    () => sortRecentImages(recentImages, recentImagesSort),
+    [recentImages, recentImagesSort],
+  )
 
   const navigateHome = useCallback((replace = false) => {
     if (window.location.pathname === '/' && !window.location.search && !window.location.hash) return
@@ -322,10 +329,22 @@ export default function App() {
     } else {
       localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
     }
-    localStorage.setItem(
-      annotationsStorageKey(pending.filename, pending.basePath),
-      JSON.stringify(pending.annotations),
+    const storageKey = annotationsStorageKey(pending.filename, pending.basePath)
+    const serializedAnnotations = JSON.stringify(pending.annotations)
+    const existingSavedAnnotations = localStorage.getItem(storageKey)
+    const existingRecord = readRecentImages().find(
+      (record) => record.filename === pending.filename && record.basePath === pending.basePath,
     )
+    const metadataChanged =
+      existingRecord?.displayName !== pending.displayName ||
+      existingRecord?.width !== pending.width ||
+      existingRecord?.height !== pending.height
+    const lastEditedAt =
+      !existingRecord || existingSavedAnnotations !== serializedAnnotations || metadataChanged
+        ? new Date().toISOString()
+        : existingRecord.lastEditedAt
+
+    localStorage.setItem(storageKey, serializedAnnotations)
 
     const summary = summarizeAnnotations(pending.annotations)
     setRecentImages(
@@ -336,7 +355,7 @@ export default function App() {
         basePath: pending.basePath,
         width: pending.width,
         height: pending.height,
-        lastOpenedAt: new Date().toISOString(),
+        lastEditedAt,
         counted: summary.counted,
         ignored: summary.ignored,
         bulls: summary.bulls,
@@ -377,10 +396,19 @@ export default function App() {
   }, [state.zoomSpeed, vp])
 
   useEffect(() => {
+    localStorage.setItem(LS_RECENT_IMAGES_SORT_KEY, recentImagesSort)
+  }, [recentImagesSort])
+
+  useEffect(() => {
     if (restoredRef.current) return
     restoredRef.current = true
 
     setRecentImages(readRecentImages())
+
+    const savedRecentSort = localStorage.getItem(LS_RECENT_IMAGES_SORT_KEY)
+    if (savedRecentSort === 'last-edited' || savedRecentSort === 'alphabetical') {
+      setRecentImagesSort(savedRecentSort)
+    }
 
     if (SHOW_DEV_SAMPLES) {
       fetch('/api/images')
@@ -674,6 +702,34 @@ export default function App() {
     }
   }, [state.annotations, state.image])
 
+  const handleExportAllJson = useCallback(() => {
+    try {
+      const images = sortedRecentImages.flatMap((record) => {
+        const saved = localStorage.getItem(annotationsStorageKey(record.filename, record.basePath))
+        if (!saved) return []
+
+        return [
+          {
+            filename: record.filename,
+            displayName: record.displayName,
+            width: record.width,
+            height: record.height,
+            annotations: normalizeAnnotations(JSON.parse(saved)),
+          },
+        ]
+      })
+
+      if (images.length === 0) {
+        setNotice('No saved annotations were found to export.')
+        return
+      }
+
+      exportCombinedJsonOnly(images)
+    } catch {
+      setNotice('Could not export the saved JSON files.')
+    }
+  }, [sortedRecentImages])
+
   const handleExportRecent = useCallback(async (record: RecentImageRecord) => {
     try {
       const saved = localStorage.getItem(annotationsStorageKey(record.filename, record.basePath))
@@ -743,6 +799,7 @@ export default function App() {
         upsertRecentImage({
           ...record,
           displayName,
+          lastEditedAt: new Date().toISOString(),
         }),
       )
 
@@ -777,8 +834,9 @@ export default function App() {
             <Toolbar
               currentDisplayName={state.image ? displayNameFor(state.image) : undefined}
               currentFilename={state.image?.filename}
-              recentImages={recentImages}
+              recentImages={sortedRecentImages}
               sampleImages={sampleImages}
+              onExportAllJson={handleExportAllJson}
               onExportAnnotatedImage={handleExportAnnotatedImage}
               onExportJsonOnly={handleExportJsonOnly}
               onExportOriginalImage={handleExportOriginalImage}
@@ -814,8 +872,11 @@ export default function App() {
               ) : (
                 <WelcomeScreen
                   notice={notice}
-                  recentImages={recentImages}
+                  recentImages={sortedRecentImages}
+                  recentImagesSort={recentImagesSort}
                   sampleImages={sampleImages}
+                  onChangeRecentImagesSort={setRecentImagesSort}
+                  onExportAllJson={handleExportAllJson}
                   onExportRecent={handleExportRecent}
                   onDeleteRecentImage={handleDeleteRecent}
                   onOpenImageFile={openImageFile}

@@ -6,6 +6,7 @@ export const LS_BBOX_CREATION_KEY = 'wsc:bbox-creation-enabled'
 export const LS_MARKER_VISIBILITY_KEY = 'wsc:marker-visibility'
 export const LS_ZOOM_SPEED_KEY = 'wsc:zoom-speed'
 export const LS_RECENT_IMAGES_KEY = 'wsc:recent-images'
+export const LS_RECENT_IMAGES_SORT_KEY = 'wsc:recent-images-sort'
 const LS_ANNOTATION_PREFIX = 'wsc:annotations:'
 
 export function imageStorageId(filename: string, basePath: string): string {

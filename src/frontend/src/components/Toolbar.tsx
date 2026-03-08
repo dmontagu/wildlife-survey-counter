@@ -28,6 +28,7 @@ interface ToolbarProps {
   currentFilename?: string
   recentImages: RecentImageRecord[]
   sampleImages: ServerImageRecord[]
+  onExportAllJson: () => void
   onExportAnnotatedImage: () => void
   onExportJsonOnly: () => void
   onExportOriginalImage: () => void
@@ -45,6 +46,7 @@ export default function Toolbar({
   currentFilename,
   recentImages,
   sampleImages,
+  onExportAllJson,
   onExportAnnotatedImage,
   onExportJsonOnly,
   onExportOriginalImage,
@@ -133,6 +135,7 @@ export default function Toolbar({
               onOpenRecentImage={onOpenRecentImage}
               onOpenSampleImage={onOpenSampleImage}
               onLoadAnnotations={() => annotationsInputRef.current?.click()}
+              onExportAllJson={onExportAllJson}
               onExportAnnotatedImage={onExportAnnotatedImage}
               onExportJsonOnly={onExportJsonOnly}
               onExportOriginalImage={onExportOriginalImage}
@@ -201,6 +204,7 @@ function WorkspaceMenu({
   onOpenRecentImage,
   onOpenSampleImage,
   onLoadAnnotations,
+  onExportAllJson,
   onExportAnnotatedImage,
   onExportJsonOnly,
   onExportOriginalImage,
@@ -223,6 +227,7 @@ function WorkspaceMenu({
   onOpenRecentImage: (record: RecentImageRecord) => void
   onOpenSampleImage: (record: ServerImageRecord) => void
   onLoadAnnotations: () => void
+  onExportAllJson: () => void
   onExportAnnotatedImage: () => void
   onExportJsonOnly: () => void
   onExportOriginalImage: () => void
@@ -332,6 +337,10 @@ function WorkspaceMenu({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={onExportAllJson} disabled={recentImages.length === 0}>
+            Export Saved Annotations
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={onExportResults} disabled={!hasImage}>
             Export Results

@@ -1,10 +1,25 @@
-import type { RecentImageRecord } from '../types'
+import type { RecentImageRecord, RecentImagesSortMode } from '../types'
+import { displayNameFor } from './image-names'
 import { imageStorageId, LS_RECENT_IMAGES_KEY } from './storage'
 
-const MAX_RECENT_IMAGES = 24
+function compareByName(a: RecentImageRecord, b: RecentImageRecord): number {
+  return displayNameFor(a).localeCompare(displayNameFor(b), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  })
+}
 
-function sortRecentImages(images: RecentImageRecord[]): RecentImageRecord[] {
-  return [...images].sort((a, b) => Date.parse(b.lastOpenedAt) - Date.parse(a.lastOpenedAt))
+export function sortRecentImages(
+  images: RecentImageRecord[],
+  sortMode: RecentImagesSortMode = 'last-edited',
+): RecentImageRecord[] {
+  return [...images].sort((a, b) => {
+    if (sortMode === 'alphabetical') {
+      return compareByName(a, b) || Date.parse(b.lastEditedAt) - Date.parse(a.lastEditedAt)
+    }
+
+    return Date.parse(b.lastEditedAt) - Date.parse(a.lastEditedAt) || compareByName(a, b)
+  })
 }
 
 function normalizeRecord(raw: unknown): RecentImageRecord | null {
@@ -21,7 +36,12 @@ function normalizeRecord(raw: unknown): RecentImageRecord | null {
     basePath,
     width: typeof data.width === 'number' ? data.width : 0,
     height: typeof data.height === 'number' ? data.height : 0,
-    lastOpenedAt: typeof data.lastOpenedAt === 'string' ? data.lastOpenedAt : new Date().toISOString(),
+    lastEditedAt:
+      typeof data.lastEditedAt === 'string'
+        ? data.lastEditedAt
+        : typeof data.lastOpenedAt === 'string'
+          ? data.lastOpenedAt
+          : new Date().toISOString(),
     counted: typeof data.counted === 'number' ? data.counted : 0,
     ignored: typeof data.ignored === 'number' ? data.ignored : 0,
     bulls: typeof data.bulls === 'number' ? data.bulls : 0,
@@ -42,9 +62,9 @@ export function readRecentImages(): RecentImageRecord[] {
 }
 
 export function writeRecentImages(images: RecentImageRecord[]): RecentImageRecord[] {
-  const trimmed = sortRecentImages(images).slice(0, MAX_RECENT_IMAGES)
-  localStorage.setItem(LS_RECENT_IMAGES_KEY, JSON.stringify(trimmed))
-  return trimmed
+  const sorted = sortRecentImages(images)
+  localStorage.setItem(LS_RECENT_IMAGES_KEY, JSON.stringify(sorted))
+  return sorted
 }
 
 export function upsertRecentImage(record: RecentImageRecord): RecentImageRecord[] {
