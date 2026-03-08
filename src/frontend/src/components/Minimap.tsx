@@ -166,8 +166,8 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
   }
 
   return (
-    <div className="absolute right-3 bottom-3 hidden flex-col items-end gap-2 lg:flex">
-      <div className="relative overflow-hidden rounded-md border border-border shadow-lg">
+    <div className="pointer-events-none absolute right-3 bottom-3 hidden flex-col items-end gap-2 lg:flex">
+      <div className="pointer-events-auto relative overflow-hidden rounded-md border border-border shadow-lg">
         <div className="pointer-events-none absolute top-2 left-2 z-10 rounded-full border border-white/8 bg-slate-950/28 px-2.5 py-1 text-[11px] font-medium text-slate-100 shadow-md">
           <div className="flex items-center gap-1.5">
             <ZoomInIcon className="size-3" />
@@ -182,7 +182,7 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
           className="block cursor-pointer"
         />
       </div>
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/78 px-3 py-2 text-[11px] font-medium text-slate-100 shadow-lg backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/62">
+      <div className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/78 px-3 py-2 text-[11px] font-medium text-slate-100 shadow-lg backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/62">
         <div className="min-w-0 space-y-1">
           <div className="text-slate-100">Drag empty space to pan</div>
           <div className="flex items-center gap-1.5 text-slate-300/85">
