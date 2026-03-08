@@ -68,18 +68,19 @@ function buildImagePath(basePath: string, filename: string): string {
   }
 
   if (basePath === '/samples/') {
-    return `/image/sample/${encodeURIComponent(filename)}`
+    return `/image/sample?f=${encodeURIComponent(filename)}`
   }
 
   if (basePath === '/uploads/') {
-    return `/image/uploads/${encodeURIComponent(filename)}`
+    return `/image/uploads?f=${encodeURIComponent(filename)}`
   }
 
-  return `/image/source/${encodeURIComponent(basePath)}/${encodeURIComponent(filename)}`
+  return `/image/source?b=${encodeURIComponent(basePath)}&f=${encodeURIComponent(filename)}`
 }
 
 function parseImagePath(
   pathname: string,
+  search = '',
 ): { kind: 'home' } | { kind: 'local-image'; basePath: string } | { kind: 'image'; basePath: string; filename: string } | null {
   if (pathname === '/' || pathname === '') {
     return { kind: 'home' }
@@ -91,10 +92,46 @@ function parseImagePath(
   }
 
   try {
+    const searchParams = new URLSearchParams(search)
+
     if (parts[1] === 'local' && parts.length >= 3) {
       return {
         kind: 'local-image',
         basePath: browserImageBasePath(decodeURIComponent(parts[2]!)),
+      }
+    }
+
+    if (parts[1] === 'sample') {
+      const filename = searchParams.get('f')
+      if (filename) {
+        return {
+          kind: 'image',
+          basePath: '/samples/',
+          filename,
+        }
+      }
+    }
+
+    if (parts[1] === 'uploads') {
+      const filename = searchParams.get('f')
+      if (filename) {
+        return {
+          kind: 'image',
+          basePath: '/uploads/',
+          filename,
+        }
+      }
+    }
+
+    if (parts[1] === 'source') {
+      const basePath = searchParams.get('b')
+      const filename = searchParams.get('f')
+      if (basePath && filename) {
+        return {
+          kind: 'image',
+          basePath,
+          filename,
+        }
       }
     }
 
@@ -159,8 +196,15 @@ export default function App() {
   const navigateToImage = useCallback((basePath: string, filename: string, replace = false) => {
     if (!basePath) return
     const nextPath = buildImagePath(basePath, filename)
-    if (window.location.pathname === nextPath && !window.location.search && !window.location.hash) return
+    if (`${window.location.pathname}${window.location.search}` === nextPath && !window.location.hash) return
     window.history[replace ? 'replaceState' : 'pushState']({}, '', nextPath)
+  }, [])
+
+  const canonicalizeImageRoute = useCallback((basePath: string, filename: string) => {
+    const canonicalPath = buildImagePath(basePath, filename)
+    if (`${window.location.pathname}${window.location.search}` !== canonicalPath) {
+      window.history.replaceState({}, '', canonicalPath)
+    }
   }, [])
 
   useEffect(() => {
@@ -322,6 +366,23 @@ export default function App() {
       return
     }
 
+    const storageKey = annotationsStorageKey(pending.filename, pending.basePath)
+    const serializedAnnotations = JSON.stringify(pending.annotations)
+    const existingSavedAnnotations = localStorage.getItem(storageKey)
+    const existingRecord = readRecentImages().find(
+      (record) => record.filename === pending.filename && record.basePath === pending.basePath,
+    )
+    const isUntouchedBrowserUpload =
+      isBrowserImageBasePath(pending.basePath) &&
+      existingRecord === undefined &&
+      existingSavedAnnotations === null &&
+      pending.annotations.length === 0 &&
+      normalizeDisplayName(pending.displayName, pending.filename) === null
+
+    if (isUntouchedBrowserUpload) {
+      return
+    }
+
     localStorage.setItem(LS_IMAGE_KEY, pending.filename)
     localStorage.setItem(LS_IMAGE_BASE_KEY, pending.basePath)
     if (pending.displayName) {
@@ -329,12 +390,7 @@ export default function App() {
     } else {
       localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
     }
-    const storageKey = annotationsStorageKey(pending.filename, pending.basePath)
-    const serializedAnnotations = JSON.stringify(pending.annotations)
-    const existingSavedAnnotations = localStorage.getItem(storageKey)
-    const existingRecord = readRecentImages().find(
-      (record) => record.filename === pending.filename && record.basePath === pending.basePath,
-    )
+
     const metadataChanged =
       existingRecord?.displayName !== pending.displayName ||
       existingRecord?.width !== pending.width ||
@@ -377,6 +433,12 @@ export default function App() {
     const timer = setTimeout(flushAnnotationSave, 500)
     return () => clearTimeout(timer)
   }, [state.image, state.annotations, flushAnnotationSave])
+
+  useEffect(() => {
+    if (state.image === null) {
+      pendingSaveRef.current = null
+    }
+  }, [state.image])
 
   useEffect(() => {
     localStorage.setItem(LS_ACTIVE_CATEGORY_KEY, state.activeCategory ?? 'cow')
@@ -457,7 +519,7 @@ export default function App() {
       } catch {}
     }
 
-    const route = parseImagePath(window.location.pathname)
+    const route = parseImagePath(window.location.pathname, window.location.search)
     if (!route || route.kind === 'home') {
       if (!route) {
         navigateHome(true)
@@ -488,8 +550,9 @@ export default function App() {
       (record) => record.filename === route.filename && record.basePath === route.basePath,
     )
 
+    canonicalizeImageRoute(route.basePath, route.filename)
     loadImageFromUrl(`${route.basePath}${route.filename}`, route.filename, route.basePath, matchingRecent?.displayName)
-  }, [loadImageFromBlob, loadImageFromUrl, navigateHome, vp])
+  }, [canonicalizeImageRoute, loadImageFromBlob, loadImageFromUrl, navigateHome, vp])
 
   const openImageFile = useCallback(
     async (file: File) => {
@@ -520,7 +583,7 @@ export default function App() {
   useEffect(() => {
     function onPopState() {
       flushAnnotationSave()
-      const route = parseImagePath(window.location.pathname)
+      const route = parseImagePath(window.location.pathname, window.location.search)
 
       if (!route || route.kind === 'home') {
         dispatch({ type: 'RESET_WORKSPACE' })
@@ -557,6 +620,7 @@ export default function App() {
         (record) => record.filename === route.filename && record.basePath === route.basePath,
       )
 
+      canonicalizeImageRoute(route.basePath, route.filename)
       loadImageFromUrl(
         `${route.basePath}${route.filename}`,
         route.filename,
@@ -567,7 +631,7 @@ export default function App() {
 
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [flushAnnotationSave, loadImageFromBlob, loadImageFromUrl, navigateHome])
+  }, [canonicalizeImageRoute, flushAnnotationSave, loadImageFromBlob, loadImageFromUrl, navigateHome])
 
   useEffect(() => {
     function onDragOver(event: DragEvent) {
