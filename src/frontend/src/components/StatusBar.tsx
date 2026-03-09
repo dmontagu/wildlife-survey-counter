@@ -2,6 +2,7 @@ import { ChevronDownIcon, DownloadIcon } from 'lucide-react'
 import { CATEGORY_COLORS } from '../colors'
 import { summarizeAnnotations } from '../lib/annotations'
 import { useAppState } from '../state'
+import BuildInfo from './BuildInfo'
 import { Button } from './ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 
@@ -24,7 +25,10 @@ export default function StatusBar({
       <div className="border-t border-border bg-card/70 px-3 py-2 text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <span>Ready to label a new image.</span>
-          <span>Recent work is saved in this browser.</span>
+          <div className="flex items-center gap-4">
+            <span>Recent work is saved in this browser.</span>
+            <BuildInfo />
+          </div>
         </div>
       </div>
     )
@@ -41,6 +45,7 @@ export default function StatusBar({
           {state.image.width} × {state.image.height}px
         </span>
         <div className="flex-1" />
+        <BuildInfo className="mr-1" />
         <div className="flex items-center">
           <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-lg px-2.5 text-xs">
             <DownloadIcon className="size-3.5" />
