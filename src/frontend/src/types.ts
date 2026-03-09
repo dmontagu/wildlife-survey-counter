@@ -74,7 +74,11 @@ export interface ServerImageRecord {
 
 export interface UndoEntry {
   description: string
-  patches: AnnotationPatch[]
+  patches?: AnnotationPatch[]
+  replaceAll?: {
+    before: Annotation[]
+    after: Annotation[]
+  }
 }
 
 export interface AnnotationPatch {
@@ -86,6 +90,7 @@ export interface AnnotationPatch {
 export type Action =
   | { type: 'LOAD_IMAGE'; image: ImageInfo }
   | { type: 'LOAD_ANNOTATIONS'; annotations: Annotation[] }
+  | { type: 'IMPORT_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'CONFIRM'; ids: number[] }
   | { type: 'REJECT'; ids: number[] }
   | { type: 'ADD_ANNOTATION'; annotation: Annotation }

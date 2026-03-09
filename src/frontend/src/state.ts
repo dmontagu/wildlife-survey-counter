@@ -57,6 +57,10 @@ function applyPatches(
   return result
 }
 
+function cloneAnnotations(annotations: Annotation[]): Annotation[] {
+  return annotations.map((annotation) => ({ ...annotation }))
+}
+
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD_IMAGE':
@@ -77,6 +81,25 @@ export function reducer(state: AppState, action: Action): AppState {
         undoStack: [],
         redoStack: [],
       }
+
+    case 'IMPORT_ANNOTATIONS': {
+      const nextAnnotations = normalizeAnnotations(action.annotations)
+      const entry: UndoEntry = {
+        description: 'Import annotations JSON',
+        replaceAll: {
+          before: cloneAnnotations(state.annotations),
+          after: cloneAnnotations(nextAnnotations),
+        },
+      }
+
+      return {
+        ...state,
+        annotations: nextAnnotations,
+        selectedIds: new Set(),
+        undoStack: [...state.undoStack, entry],
+        redoStack: [],
+      }
+    }
 
     case 'CONFIRM': {
       const ids = new Set(action.ids)
@@ -384,7 +407,8 @@ export function reducer(state: AppState, action: Action): AppState {
       const entry = state.undoStack[state.undoStack.length - 1]!
       return {
         ...state,
-        annotations: applyPatches(state.annotations, entry.patches, 'undo'),
+        annotations: entry.replaceAll ? cloneAnnotations(entry.replaceAll.before) : applyPatches(state.annotations, entry.patches ?? [], 'undo'),
+        selectedIds: new Set(),
         undoStack: state.undoStack.slice(0, -1),
         redoStack: [...state.redoStack, entry],
       }
@@ -395,7 +419,8 @@ export function reducer(state: AppState, action: Action): AppState {
       const entry = state.redoStack[state.redoStack.length - 1]!
       return {
         ...state,
-        annotations: applyPatches(state.annotations, entry.patches, 'redo'),
+        annotations: entry.replaceAll ? cloneAnnotations(entry.replaceAll.after) : applyPatches(state.annotations, entry.patches ?? [], 'redo'),
+        selectedIds: new Set(),
         redoStack: state.redoStack.slice(0, -1),
         undoStack: [...state.undoStack, entry],
       }

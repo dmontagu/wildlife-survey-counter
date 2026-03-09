@@ -10,6 +10,7 @@ import ShortcutKey, { ShortcutSequence } from './components/ShortcutKey'
 import StatusBar from './components/StatusBar'
 import Toolbar from './components/Toolbar'
 import { Button } from './components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog'
 import WelcomeScreen from './components/WelcomeScreen'
 import { SHOW_DEV_SAMPLES } from './config'
 import { useViewport } from './hooks/useViewport'
@@ -57,6 +58,10 @@ interface PendingSave {
   width: number
   height: number
   annotations: Annotation[]
+}
+
+interface PendingAnnotationImport {
+  file: File
 }
 
 function buildImagePath(basePath: string, filename: string): string {
@@ -183,6 +188,7 @@ export default function App() {
   const [recentImagesSort, setRecentImagesSort] = useState<RecentImagesSortMode>('last-edited')
   const [sampleImages, setSampleImages] = useState<ServerImageRecord[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const [pendingAnnotationImport, setPendingAnnotationImport] = useState<PendingAnnotationImport | null>(null)
   const sortedRecentImages = useMemo(
     () => sortRecentImages(recentImages, recentImagesSort),
     [recentImages, recentImagesSort],
@@ -581,29 +587,30 @@ export default function App() {
   )
 
   const loadAnnotationsFile = useCallback(
-    async (file: File, options?: { allowReplace?: boolean }) => {
+    async (file: File, options?: { skipConfirm?: boolean }) => {
       if (!state.image) {
         setNotice('Open an image before importing annotations JSON.')
         return
       }
 
-      if (!options?.allowReplace && state.annotations.length > 0) {
-        setNotice('This image already has annotations. Use Load Annotation JSON from the menu to replace them.')
+      if (!options?.skipConfirm && summarizeAnnotations(state.annotations).counted > 0) {
+        setPendingAnnotationImport({ file })
         return
       }
 
       try {
         const parsed = JSON.parse(await file.text())
         dispatch({
-          type: 'LOAD_ANNOTATIONS',
+          type: 'IMPORT_ANNOTATIONS',
           annotations: parsed.annotations || parsed,
         })
+        setPendingAnnotationImport(null)
         setNotice(null)
       } catch {
         setNotice('Could not import that annotation JSON file.')
       }
     },
-    [state.annotations.length, state.image],
+    [state.annotations, state.image],
   )
 
   useEffect(() => {
@@ -922,7 +929,7 @@ export default function App() {
               onFitToWindow={handleFitToWindow}
               onGoHome={handleGoHome}
               onOpenImageFile={openImageFile}
-              onOpenAnnotationsFile={(file) => loadAnnotationsFile(file, { allowReplace: true })}
+              onOpenAnnotationsFile={(file) => loadAnnotationsFile(file)}
               onOpenRecentImage={handleOpenRecent}
               onRenameImage={handleRenameImage}
               onOpenSampleImage={handleOpenSample}
@@ -975,6 +982,37 @@ export default function App() {
             <HelpOverlay />
           </div>
         </div>
+
+        <Dialog
+          open={pendingAnnotationImport !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingAnnotationImport(null)
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Replace current annotations?</DialogTitle>
+              <DialogDescription>
+                {pendingAnnotationImport
+                  ? `Importing ${pendingAnnotationImport.file.name} will replace the current annotations for this image. You can undo this after importing.`
+                  : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPendingAnnotationImport(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!pendingAnnotationImport) return
+                  void loadAnnotationsFile(pendingAnnotationImport.file, { skipConfirm: true })
+                }}
+              >
+                Replace Annotations
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DispatchContext.Provider>
     </AppStateContext.Provider>
   )
