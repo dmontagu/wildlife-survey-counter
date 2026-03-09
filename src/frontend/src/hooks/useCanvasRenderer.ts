@@ -150,6 +150,33 @@ function drawAnnotationBbox(
   ctx.restore()
 }
 
+function drawMarkerLabel(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  color: string,
+  maxDiameter: number,
+) {
+  const maxWidth = Math.max(8, maxDiameter - 2)
+  let fontSize = 9
+  let measuredWidth = Number.POSITIVE_INFINITY
+
+  while (fontSize >= 4.5) {
+    ctx.font = `bold ${fontSize}px sans-serif`
+    measuredWidth = ctx.measureText(label).width
+    if (measuredWidth <= maxWidth) break
+    fontSize -= 0.5
+  }
+
+  if (measuredWidth > maxWidth) return
+
+  ctx.fillStyle = color
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(label, x, y + 0.5)
+}
+
 export function useCanvasRenderer(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   state: AppState,
@@ -277,14 +304,8 @@ export function useCanvasRenderer(
 
           // Number label
           if (state.showNumbers) {
-            ctx.fillStyle = textColorFor(color)
-            ctx.font = 'bold 9px sans-serif'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
             const label = String(displayNumbers.get(ann.id) ?? ann.id)
-            if (label.length <= 3) {
-              ctx.fillText(label, sx, sy + 0.5)
-            }
+            drawMarkerLabel(ctx, label, sx, sy, textColorFor(color), radius * 2)
           }
 
           drawCategoryBadge(ctx, sx, sy, ann.category, categoryColorFor(ann.category))

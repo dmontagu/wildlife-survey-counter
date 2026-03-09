@@ -367,9 +367,9 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       // Priority 3: Annotation hit
       const hitId = findAnnotationAt(sx, sy)
       if (hitId !== null) {
-        if (e.shiftKey) {
+        if (e.shiftKey || e.metaKey || e.ctrlKey) {
           dispatch({ type: 'SELECT', ids: [hitId], append: true })
-        } else if (!state.selectedIds.has(hitId)) {
+        } else if (state.selectedIds.size !== 1 || !state.selectedIds.has(hitId)) {
           dispatch({ type: 'SELECT', ids: [hitId] })
         }
         const ann = state.annotations.find((a) => a.id === hitId)
