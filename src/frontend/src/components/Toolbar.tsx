@@ -36,6 +36,7 @@ interface ToolbarProps {
   onFitToWindow: () => void
   onGoHome: () => void
   onOpenImageFile: (file: File) => Promise<void>
+  onOpenAnnotationsFile: (file: File) => Promise<void> | void
   onOpenRecentImage: (record: RecentImageRecord) => void
   onRenameImage: (name: string | null) => void
   onOpenSampleImage: (record: ServerImageRecord) => void
@@ -54,6 +55,7 @@ export default function Toolbar({
   onFitToWindow,
   onGoHome,
   onOpenImageFile,
+  onOpenAnnotationsFile,
   onOpenRecentImage,
   onRenameImage,
   onOpenSampleImage,
@@ -75,26 +77,13 @@ export default function Toolbar({
   )
 
   const handleAnnotationUpload = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0]
       if (!file) return
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        try {
-          const parsed = JSON.parse(String(reader.result))
-          dispatch({
-            type: 'LOAD_ANNOTATIONS',
-            annotations: parsed.annotations || parsed,
-          })
-        } catch {
-          console.error('Could not import annotations JSON.')
-        }
-      }
-      reader.readAsText(file)
+      await onOpenAnnotationsFile(file)
       event.target.value = ''
     },
-    [dispatch],
+    [onOpenAnnotationsFile],
   )
 
   return (

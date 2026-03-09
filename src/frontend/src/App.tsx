@@ -580,6 +580,32 @@ export default function App() {
     [flushAnnotationSave, loadImageFromBlob, loadLocalImageFile],
   )
 
+  const loadAnnotationsFile = useCallback(
+    async (file: File, options?: { allowReplace?: boolean }) => {
+      if (!state.image) {
+        setNotice('Open an image before importing annotations JSON.')
+        return
+      }
+
+      if (!options?.allowReplace && state.annotations.length > 0) {
+        setNotice('This image already has annotations. Use Load Annotation JSON from the menu to replace them.')
+        return
+      }
+
+      try {
+        const parsed = JSON.parse(await file.text())
+        dispatch({
+          type: 'LOAD_ANNOTATIONS',
+          annotations: parsed.annotations || parsed,
+        })
+        setNotice(null)
+      } catch {
+        setNotice('Could not import that annotation JSON file.')
+      }
+    },
+    [state.annotations.length, state.image],
+  )
+
   useEffect(() => {
     function onPopState() {
       flushAnnotationSave()
@@ -649,19 +675,7 @@ export default function App() {
       }
 
       if (file.name.endsWith('.json')) {
-        const reader = new FileReader()
-        reader.onload = () => {
-          try {
-            const parsed = JSON.parse(String(reader.result))
-            dispatch({
-              type: 'LOAD_ANNOTATIONS',
-              annotations: normalizeAnnotations(parsed.annotations || parsed),
-            })
-          } catch {
-            setNotice('Could not import that annotation JSON file.')
-          }
-        }
-        reader.readAsText(file)
+        void loadAnnotationsFile(file)
       }
     }
 
@@ -671,7 +685,7 @@ export default function App() {
       window.removeEventListener('dragover', onDragOver)
       window.removeEventListener('drop', onDrop)
     }
-  }, [openImageFile])
+  }, [loadAnnotationsFile, openImageFile])
 
   const handleFitToWindow = useCallback(() => {
     if (state.image) {
@@ -908,6 +922,7 @@ export default function App() {
               onFitToWindow={handleFitToWindow}
               onGoHome={handleGoHome}
               onOpenImageFile={openImageFile}
+              onOpenAnnotationsFile={(file) => loadAnnotationsFile(file, { allowReplace: true })}
               onOpenRecentImage={handleOpenRecent}
               onRenameImage={handleRenameImage}
               onOpenSampleImage={handleOpenSample}
