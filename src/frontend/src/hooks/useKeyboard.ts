@@ -45,6 +45,16 @@ export function useKeyboard(
         return
       }
 
+      if (matchesKey(e, KEYS.confirmSelection)) {
+        dispatch({ type: 'CONFIRM', ids: [] })
+        return
+      }
+
+      if (matchesKey(e, KEYS.unconfirmSelection)) {
+        dispatch({ type: 'UNCONFIRM', ids: [] })
+        return
+      }
+
       if (matchesKey(e, KEYS.deleteOrReject)) {
         dispatch({ type: 'DELETE_OR_REJECT', ids: [] })
         return

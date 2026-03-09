@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import WelcomeScreen from './components/WelcomeScreen'
 import { SHOW_DEV_SAMPLES } from './config'
 import { useViewport } from './hooks/useViewport'
-import { normalizeAnnotations, summarizeAnnotations } from './lib/annotations'
+import { normalizeAnnotations, prepareImportedAnnotations, summarizeAnnotations } from './lib/annotations'
 import {
   browserImageBasePath,
   browserImageIdFromBasePath,
@@ -62,6 +62,10 @@ interface PendingSave {
 
 interface PendingAnnotationImport {
   file: File
+}
+
+function isJsonFile(file: File): boolean {
+  return file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
 }
 
 function buildImagePath(basePath: string, filename: string): string {
@@ -602,7 +606,7 @@ export default function App() {
         const parsed = JSON.parse(await file.text())
         dispatch({
           type: 'IMPORT_ANNOTATIONS',
-          annotations: parsed.annotations || parsed,
+          annotations: prepareImportedAnnotations(parsed.annotations ?? parsed),
         })
         setPendingAnnotationImport(null)
         setNotice(null)
@@ -681,7 +685,7 @@ export default function App() {
         return
       }
 
-      if (file.name.endsWith('.json')) {
+      if (isJsonFile(file)) {
         void loadAnnotationsFile(file)
       }
     }

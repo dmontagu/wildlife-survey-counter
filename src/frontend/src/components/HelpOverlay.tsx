@@ -17,8 +17,11 @@ const SHARED_GROUPS = [
     title: 'Tools',
     items: [
       ['Esc', 'Clear the current selection'],
+      ['C', 'Confirm the selected marker or markers as reviewed'],
+      ['U', 'Mark the selected marker or markers as unconfirmed'],
       ['Backspace', 'Delete the selected marker'],
       ['Shift+Drag', 'Select markers in a box'],
+      [`Shift+${platformModifier}+Drag`, 'Select markers in a box and confirm them immediately'],
       [`${platformModifier}+Z`, 'Undo the last change'],
       [`${platformModifier}+Shift+Z`, 'Redo the last undone change'],
     ],

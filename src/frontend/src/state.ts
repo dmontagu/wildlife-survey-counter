@@ -104,11 +104,11 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'CONFIRM': {
       const ids = new Set(action.ids)
       const patches: AnnotationPatch[] = state.annotations
-        .filter((a) => ids.has(a.id) && a.state !== 'confirmed' && a.state !== 'manually-added')
+        .filter((a) => ids.has(a.id) && a.state !== 'rejected' && a.reviewStatus !== 'confirmed')
         .map((a) => ({
           id: a.id,
-          before: { state: a.state },
-          after: { state: 'confirmed' as const },
+          before: { reviewStatus: a.reviewStatus },
+          after: { reviewStatus: 'confirmed' as const },
         }))
       if (patches.length === 0) return state
       const entry: UndoEntry = {
@@ -118,7 +118,31 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         annotations: state.annotations.map((a) =>
-          ids.has(a.id) && a.state !== 'manually-added' ? { ...a, state: 'confirmed' } : a,
+          ids.has(a.id) && a.state !== 'rejected' ? { ...a, reviewStatus: 'confirmed' } : a,
+        ),
+        undoStack: [...state.undoStack, entry],
+        redoStack: [],
+      }
+    }
+
+    case 'UNCONFIRM': {
+      const ids = new Set(action.ids)
+      const patches: AnnotationPatch[] = state.annotations
+        .filter((a) => ids.has(a.id) && a.state !== 'rejected' && a.reviewStatus !== 'unconfirmed')
+        .map((a) => ({
+          id: a.id,
+          before: { reviewStatus: a.reviewStatus },
+          after: { reviewStatus: 'unconfirmed' as const },
+        }))
+      if (patches.length === 0) return state
+      const entry: UndoEntry = {
+        description: `Mark ${patches.length} annotation(s) as unconfirmed`,
+        patches,
+      }
+      return {
+        ...state,
+        annotations: state.annotations.map((a) =>
+          ids.has(a.id) && a.state !== 'rejected' ? { ...a, reviewStatus: 'unconfirmed' } : a,
         ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
@@ -131,8 +155,8 @@ export function reducer(state: AppState, action: Action): AppState {
         .filter((a) => ids.has(a.id) && a.state !== 'rejected' && a.state !== 'manually-added')
         .map((a) => ({
           id: a.id,
-          before: { state: a.state },
-          after: { state: 'rejected' as const },
+          before: { state: a.state, reviewStatus: a.reviewStatus },
+          after: { state: 'rejected' as const, reviewStatus: 'confirmed' as const },
         }))
       if (patches.length === 0) return state
       const entry: UndoEntry = {
@@ -142,7 +166,9 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         annotations: state.annotations.map((a) =>
-          ids.has(a.id) && a.state !== 'manually-added' ? { ...a, state: 'rejected' } : a,
+          ids.has(a.id) && a.state !== 'manually-added'
+            ? { ...a, state: 'rejected', reviewStatus: 'confirmed' }
+            : a,
         ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
@@ -196,8 +222,8 @@ export function reducer(state: AppState, action: Action): AppState {
       if (!ann) return state
       const dx = action.x - ann.x
       const dy = action.y - ann.y
-      const before: Partial<Annotation> = { x: ann.x, y: ann.y }
-      const after: Partial<Annotation> = { x: action.x, y: action.y }
+      const before: Partial<Annotation> = { x: ann.x, y: ann.y, reviewStatus: ann.reviewStatus }
+      const after: Partial<Annotation> = { x: action.x, y: action.y, reviewStatus: 'confirmed' }
       if (ann.bbox) {
         before.bbox = ann.bbox
         after.bbox = [ann.bbox[0] + dx, ann.bbox[1] + dy, ann.bbox[2] + dx, ann.bbox[3] + dy]
@@ -216,6 +242,7 @@ export function reducer(state: AppState, action: Action): AppState {
                 x: action.x,
                 y: action.y,
                 bbox: a.bbox ? [a.bbox[0] + dx, a.bbox[1] + dy, a.bbox[2] + dx, a.bbox[3] + dy] : null,
+                reviewStatus: 'confirmed',
               }
             : a,
         ),
@@ -234,18 +261,20 @@ export function reducer(state: AppState, action: Action): AppState {
         bbox: ann.bbox,
         x: ann.x,
         y: ann.y,
+        reviewStatus: ann.reviewStatus,
       }
       const after: Partial<Annotation> = {
         bbox: action.bbox,
         x: newX,
         y: newY,
+        reviewStatus: 'confirmed',
       }
       const patch: AnnotationPatch = { id: action.id, before, after }
       const entry: UndoEntry = { description: 'Resize bbox', patches: [patch] }
       return {
         ...state,
         annotations: state.annotations.map((a) =>
-          a.id === action.id ? { ...a, bbox: action.bbox, x: newX, y: newY } : a,
+          a.id === action.id ? { ...a, bbox: action.bbox, x: newX, y: newY, reviewStatus: 'confirmed' } : a,
         ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
@@ -258,8 +287,8 @@ export function reducer(state: AppState, action: Action): AppState {
         .filter((annotation) => ids.has(annotation.id) && annotation.category !== action.category)
         .map((annotation) => ({
           id: annotation.id,
-          before: { category: annotation.category },
-          after: { category: action.category },
+          before: { category: annotation.category, reviewStatus: annotation.reviewStatus },
+          after: { category: action.category, reviewStatus: 'confirmed' as const },
         }))
       if (patches.length === 0) return state
 
@@ -274,7 +303,9 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         annotations: state.annotations.map((annotation) =>
-          ids.has(annotation.id) ? { ...annotation, category: action.category } : annotation,
+          ids.has(annotation.id)
+            ? { ...annotation, category: action.category, reviewStatus: 'confirmed' }
+            : annotation,
         ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
@@ -307,8 +338,8 @@ export function reducer(state: AppState, action: Action): AppState {
           if (ann.state !== 'rejected') {
             patches.push({
               id: ann.id,
-              before: { state: ann.state },
-              after: { state: 'rejected' },
+              before: { state: ann.state, reviewStatus: ann.reviewStatus },
+              after: { state: 'rejected', reviewStatus: 'confirmed' },
             })
           }
         }
@@ -322,7 +353,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const toDelete = new Set(patches.filter((p) => p.after === null).map((p) => p.id))
       const toReject = new Set(patches.filter((p) => p.after !== null).map((p) => p.id))
       newAnnotations = newAnnotations.filter((a) => !toDelete.has(a.id))
-      newAnnotations = newAnnotations.map((a) => (toReject.has(a.id) ? { ...a, state: 'rejected' as const } : a))
+      newAnnotations = newAnnotations.map((a) =>
+        toReject.has(a.id) ? { ...a, state: 'rejected' as const, reviewStatus: 'confirmed' as const } : a,
+      )
       return {
         ...state,
         annotations: newAnnotations,
@@ -365,8 +398,8 @@ export function reducer(state: AppState, action: Action): AppState {
       if (toReject.length === 0) return state
       const patches: AnnotationPatch[] = toReject.map((a) => ({
         id: a.id,
-        before: { state: a.state },
-        after: { state: 'rejected' as const },
+        before: { state: a.state, reviewStatus: a.reviewStatus },
+        after: { state: 'rejected' as const, reviewStatus: 'confirmed' as const },
       }))
       const entry: UndoEntry = {
         description: `Commit threshold: reject ${toReject.length}`,
@@ -375,7 +408,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const rejectIds = new Set(toReject.map((a) => a.id))
       return {
         ...state,
-        annotations: state.annotations.map((a) => (rejectIds.has(a.id) ? { ...a, state: 'rejected' } : a)),
+        annotations: state.annotations.map((a) =>
+          rejectIds.has(a.id) ? { ...a, state: 'rejected', reviewStatus: 'confirmed' } : a,
+        ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
       }

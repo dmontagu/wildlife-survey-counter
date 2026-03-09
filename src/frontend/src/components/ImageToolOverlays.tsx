@@ -1,6 +1,8 @@
+import { CheckIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { ELK_CATEGORY_OPTIONS } from '../config'
 import { useAppState, useDispatch } from '../state'
+import { isIgnoredAnnotation } from '../lib/annotations'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
 
@@ -18,6 +20,13 @@ export default function ImageToolOverlays() {
     const first = selectedAnnotations[0]?.category ?? null
     return selectedAnnotations.every((annotation) => annotation.category === first) ? first : undefined
   }, [selectedAnnotations])
+  const confirmableSelectionCount = useMemo(
+    () =>
+      selectedAnnotations.filter(
+        (annotation) => !isIgnoredAnnotation(annotation) && annotation.reviewStatus === 'unconfirmed',
+      ).length,
+    [selectedAnnotations],
+  )
 
   const displayCategory = state.selectedIds.size > 0 ? selectedCategory : state.activeCategory
 
@@ -34,7 +43,7 @@ export default function ImageToolOverlays() {
               <span>to cycle</span>
             </span>
           }
-          widthClass="w-[15.5rem]"
+          widthClass="w-[21rem]"
         >
           {ELK_CATEGORY_OPTIONS.map((option) => (
             <FloatingActionButton
@@ -59,7 +68,7 @@ export default function ImageToolOverlays() {
             <div className="basis-full space-y-2 border-t border-white/10 px-1 pt-2">
               <div className="rounded-xl bg-white/5 px-2.5 py-2 text-[11px] leading-4 text-slate-200/90">
                 This changes the class of the {state.selectedIds.size} selected marker
-                {state.selectedIds.size === 1 ? '' : 's'}.
+                {state.selectedIds.size === 1 ? '' : 's'}. Changing the class or moving a marker also confirms it.
               </div>
               <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-2.5 py-2 text-[11px] text-slate-200/90">
                 <span>
@@ -67,6 +76,22 @@ export default function ImageToolOverlays() {
                 </span>
                 <ShortcutKey shortcut="Backspace" compact />
               </div>
+              {confirmableSelectionCount > 0 ? (
+                <Button
+                  size="sm"
+                  onClick={() => dispatch({ type: 'CONFIRM', ids: [...state.selectedIds] })}
+                  className="h-auto w-full items-center justify-between gap-3 rounded-xl border border-amber-400/25 bg-amber-500/12 px-3 py-2.5 text-left text-[11px] font-medium text-amber-50 shadow-none hover:bg-amber-500/18"
+                >
+                  <span className="min-w-0 inline-flex items-center gap-2">
+                    <CheckIcon className="size-3.5 shrink-0" />
+                    <span className="leading-4">
+                      Confirm {confirmableSelectionCount} unconfirmed marker
+                      {confirmableSelectionCount === 1 ? '' : 's'}
+                    </span>
+                  </span>
+                  <ShortcutKey shortcut="C" compact />
+                </Button>
+              ) : null}
             </div>
           ) : (
             <div className="basis-full border-t border-white/10 px-1 pt-2 text-[11px] leading-4 text-slate-300/80">

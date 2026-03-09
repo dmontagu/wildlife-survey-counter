@@ -2,6 +2,8 @@ import type { AnnotationCategory } from './types'
 
 /** Keyboard shortcuts — consumed by useKeyboard.ts */
 export const KEYS = {
+  confirmSelection: ['c'],
+  unconfirmSelection: ['u'],
   deleteOrReject: ['Backspace', 'Delete'],
   undo: { key: 'z', meta: true },
   redo: { key: 'z', meta: true, shift: true },

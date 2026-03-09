@@ -1,6 +1,13 @@
-import type { Annotation, AnnotationCategory, AnnotationState, AnnotationSummary } from '../types'
+import type {
+  Annotation,
+  AnnotationCategory,
+  AnnotationReviewStatus,
+  AnnotationState,
+  AnnotationSummary,
+} from '../types'
 
 const VALID_STATES = new Set<AnnotationState>(['auto-detected', 'confirmed', 'rejected', 'manually-added'])
+const VALID_REVIEW_STATUSES = new Set<AnnotationReviewStatus>(['confirmed', 'unconfirmed'])
 
 function normalizeBbox(value: unknown): [number, number, number, number] | null {
   if (!Array.isArray(value) || value.length !== 4) return null
@@ -29,6 +36,10 @@ export function normalizeAnnotation(raw: unknown, index = 0): Annotation {
     typeof data.state === 'string' && VALID_STATES.has(data.state as AnnotationState)
       ? (data.state as AnnotationState)
       : 'confirmed'
+  const reviewStatus: AnnotationReviewStatus =
+    typeof data.reviewStatus === 'string' && VALID_REVIEW_STATUSES.has(data.reviewStatus as AnnotationReviewStatus)
+      ? (data.reviewStatus as AnnotationReviewStatus)
+      : 'confirmed'
 
   return {
     id: Number.isFinite(id) ? id : index + 1,
@@ -42,12 +53,19 @@ export function normalizeAnnotation(raw: unknown, index = 0): Annotation {
     label: typeof data.label === 'string' && data.label.length > 0 ? data.label : 'elk',
     category: inferCategory(data),
     state,
+    reviewStatus,
   }
 }
 
 export function normalizeAnnotations(raw: unknown): Annotation[] {
   if (!Array.isArray(raw)) return []
   return raw.map((annotation, index) => normalizeAnnotation(annotation, index))
+}
+
+export function prepareImportedAnnotations(raw: unknown): Annotation[] {
+  return normalizeAnnotations(raw).map((annotation) =>
+    isIgnoredAnnotation(annotation) ? annotation : { ...annotation, reviewStatus: 'unconfirmed' },
+  )
 }
 
 export function isIgnoredAnnotation(annotation: Annotation): boolean {
@@ -69,9 +87,10 @@ export function summarizeAnnotations(annotations: Annotation[]): AnnotationSumma
       summary.counted += 1
       if (annotation.category === 'bull') summary.bulls += 1
       if (annotation.category === 'spike') summary.spikes += 1
+      if (annotation.reviewStatus === 'unconfirmed') summary.unconfirmed += 1
       return summary
     },
-    { counted: 0, ignored: 0, bulls: 0, spikes: 0 },
+    { counted: 0, ignored: 0, bulls: 0, spikes: 0, unconfirmed: 0 },
   )
 }
 

@@ -1,5 +1,6 @@
 export type AnnotationState = 'auto-detected' | 'confirmed' | 'rejected' | 'manually-added'
 export type AnnotationCategory = 'bull' | 'spike' | null
+export type AnnotationReviewStatus = 'confirmed' | 'unconfirmed'
 export type MarkerVisibilityMode = 'visible' | 'dimmed' | 'hidden'
 
 export interface Annotation {
@@ -13,6 +14,7 @@ export interface Annotation {
   label: string
   category: AnnotationCategory
   state: AnnotationState
+  reviewStatus: AnnotationReviewStatus
 }
 
 export interface ImageInfo {
@@ -47,6 +49,7 @@ export interface AnnotationSummary {
   ignored: number
   bulls: number
   spikes: number
+  unconfirmed: number
 }
 
 export type RecentImagesSortMode = 'last-edited' | 'alphabetical'
@@ -92,6 +95,7 @@ export type Action =
   | { type: 'LOAD_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'IMPORT_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'CONFIRM'; ids: number[] }
+  | { type: 'UNCONFIRM'; ids: number[] }
   | { type: 'REJECT'; ids: number[] }
   | { type: 'ADD_ANNOTATION'; annotation: Annotation }
   | { type: 'DELETE_ANNOTATION'; id: number }

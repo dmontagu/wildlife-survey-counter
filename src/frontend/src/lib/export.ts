@@ -227,13 +227,14 @@ function renderAnnotatedCanvas(
   const summary = summarizeAnnotations(annotations)
   const panelScale = Math.min(2.6, Math.max(1, Math.max(image.width, image.height) / 1600))
   const panelWidth = Math.max(220, 236 * panelScale)
-  const panelHeight = 68 * panelScale
+  const panelHeight = 84 * panelScale
   const panelX = 16
   const panelY = 16
   const paddingX = 12 * panelScale
   const titleY = panelY + 22 * panelScale
   const line1Y = panelY + 44 * panelScale
   const line2Y = panelY + 63 * panelScale
+  const line3Y = panelY + 80 * panelScale
 
   ctx.fillStyle = 'rgba(22, 28, 24, 0.84)'
   drawRoundedRect(ctx, panelX, panelY, panelWidth, panelHeight, 12 * panelScale)
@@ -251,6 +252,7 @@ function renderAnnotatedCanvas(
   ctx.fillText(`Counted: ${summary.counted}`, panelX + paddingX, line1Y)
   ctx.fillText(`Bulls: ${summary.bulls}`, panelX + paddingX, line2Y)
   ctx.fillText(`Spikes: ${summary.spikes}`, panelX + 112 * panelScale, line2Y)
+  ctx.fillText(`Unconfirmed: ${summary.unconfirmed}`, panelX + paddingX, line3Y)
 
   return canvas
 }

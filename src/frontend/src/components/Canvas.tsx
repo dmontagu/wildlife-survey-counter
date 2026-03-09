@@ -13,6 +13,7 @@ import type { Annotation, AppState } from '../types'
 
 type DragType =
   | 'select-rect'
+  | 'select-rect-confirm'
   | 'move-annotation'
   | 'add-annotation'
   | 'add-bbox'
@@ -54,6 +55,7 @@ function makeAnnotation(
     label: 'elk',
     category: state.activeCategory,
     state: 'manually-added',
+    reviewStatus: 'confirmed',
   }
 }
 
@@ -90,6 +92,10 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     (action: Parameters<typeof dispatch>[0]) => {
       if (action.type === 'CONFIRM' && action.ids.length === 0 && state.selectedIds.size > 0) {
         dispatch({ type: 'CONFIRM', ids: [...state.selectedIds] })
+        return
+      }
+      if (action.type === 'UNCONFIRM' && action.ids.length === 0 && state.selectedIds.size > 0) {
+        dispatch({ type: 'UNCONFIRM', ids: [...state.selectedIds] })
         return
       }
       if (action.type === 'REJECT' && action.ids.length === 0 && state.selectedIds.size > 0) {
@@ -251,6 +257,11 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     return [e.clientX - rect.left, e.clientY - rect.top]
   }, [])
 
+  const getCanvasPosFromClient = useCallback((clientX: number, clientY: number): [number, number] => {
+    const rect = canvasRef.current!.getBoundingClientRect()
+    return [clientX - rect.left, clientY - rect.top]
+  }, [])
+
   const findAnnotationAt = useCallback(
     (sx: number, sy: number): number | null => {
       const visible = getVisibleAnnotationsForState(state)
@@ -332,6 +343,12 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         dragType.current = 'pan'
         isDragging.current = true
         if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
+        return
+      }
+
+      // Priority 1c: Shift + Cmd/Ctrl → box select and confirm in one gesture
+      if (e.shiftKey && (e.metaKey || e.ctrlKey)) {
+        dragType.current = 'select-rect-confirm'
         return
       }
 
@@ -460,17 +477,22 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     [getCanvasPos, findBboxHandleAt, findAnnotationAt, idleCursor, state.bboxCreationEnabled, spaceHeld],
   )
 
-  const onMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const handleDragMove = useCallback(
+    (event: {
+      clientX: number
+      clientY: number
+      buttons: number
+      movementX: number
+      movementY: number
+    }) => {
       // Skip during pointer lock (Space pan handled by raw mousemove listener)
       if (spaceHeld.current) return
 
-      if (e.buttons !== 1) {
-        updateCursor(e)
+      if (event.buttons !== 1) {
         return
       }
 
-      const [sx, sy] = getCanvasPos(e)
+      const [sx, sy] = getCanvasPosFromClient(event.clientX, event.clientY)
       const [startX, startY] = dragStart.current
       const dist = Math.hypot(sx - startX, sy - startY)
 
@@ -479,7 +501,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
 
       const dt = dragType.current
 
-      if (dt === 'select-rect') {
+      if (dt === 'select-rect' || dt === 'select-rect-confirm') {
         if (!selectionRect.current) {
           selectionRect.current = { startX, startY, endX: sx, endY: sy }
         }
@@ -538,8 +560,8 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       } else if (dt === 'pan' || dt === 'pan-empty' || dt === 'add-annotation' || dt === null) {
         // Pan: middle mouse, modifier drag, Space pan, or empty-canvas drag.
         if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing'
-        vp.viewport.current.offsetX += e.movementX
-        vp.viewport.current.offsetY += e.movementY
+        vp.viewport.current.offsetX += event.movementX
+        vp.viewport.current.offsetY += event.movementY
         vp.clampViewport()
         vp.dirty.current = true
         if (dt === null) {
@@ -547,12 +569,18 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         }
       }
     },
-    [getCanvasPos, vp, updateCursor, spaceHeld],
+    [getCanvasPosFromClient, vp, spaceHeld],
   )
 
-  const onMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      const [sx, sy] = getCanvasPos(e)
+  const finalizeDrag = useCallback(
+    (event: {
+      clientX: number
+      clientY: number
+      shiftKey: boolean
+      metaKey: boolean
+      ctrlKey: boolean
+    }) => {
+      const [sx, sy] = getCanvasPosFromClient(event.clientX, event.clientY)
       const dt = dragType.current
 
       // Handle add mode: click = point, drag = pan unless advanced bbox drawing was requested.
@@ -627,8 +655,14 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
           dispatch({
             type: 'SELECT',
             ids: inside.map((a) => a.id),
-            append: e.shiftKey,
+            append: event.shiftKey,
           })
+          if (dt === 'select-rect-confirm') {
+            dispatch({
+              type: 'CONFIRM',
+              ids: inside.map((a) => a.id),
+            })
+          }
         }
 
         selectionRect.current = null
@@ -647,7 +681,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
             dispatch({
               type: 'SELECT',
               ids: inside.map((a) => a.id),
-              append: e.shiftKey,
+              append: event.shiftKey,
             })
           }
         }
@@ -680,14 +714,45 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       if (wasPan && canvasRef.current) {
         if (spaceHeld.current) {
           canvasRef.current.style.cursor = 'grabbing'
-        } else if (e.metaKey || e.ctrlKey) {
+        } else if (event.metaKey || event.ctrlKey) {
           canvasRef.current.style.cursor = 'grab'
         } else {
           canvasRef.current.style.cursor = idleCursor
         }
       }
     },
-    [addAnnotation, dispatch, getCanvasPos, idleCursor, spaceHeld, state, vp],
+    [addAnnotation, dispatch, getCanvasPosFromClient, idleCursor, spaceHeld, state, vp],
+  )
+
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.buttons !== 1) {
+        updateCursor(e)
+        return
+      }
+
+      handleDragMove({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        buttons: e.buttons,
+        movementX: e.movementX,
+        movementY: e.movementY,
+      })
+    },
+    [handleDragMove, updateCursor],
+  )
+
+  const onMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      finalizeDrag({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        shiftKey: e.shiftKey,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+      })
+    },
+    [finalizeDrag],
   )
 
   const onMouseDownCapture = useCallback((e: React.MouseEvent) => {
@@ -699,6 +764,37 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       e.preventDefault()
     }
   }, [])
+
+  useEffect(() => {
+    function onWindowMouseMove(e: MouseEvent) {
+      if (!dragType.current || e.target === canvasRef.current) return
+      handleDragMove({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        buttons: e.buttons,
+        movementX: e.movementX,
+        movementY: e.movementY,
+      })
+    }
+
+    function onWindowMouseUp(e: MouseEvent) {
+      if (!dragType.current || e.target === canvasRef.current) return
+      finalizeDrag({
+        clientX: e.clientX,
+        clientY: e.clientY,
+        shiftKey: e.shiftKey,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+      })
+    }
+
+    window.addEventListener('mousemove', onWindowMouseMove)
+    window.addEventListener('mouseup', onWindowMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onWindowMouseMove)
+      window.removeEventListener('mouseup', onWindowMouseUp)
+    }
+  }, [finalizeDrag, handleDragMove])
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden">
