@@ -367,12 +367,16 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
       // Priority 3: Annotation hit
       const hitId = findAnnotationAt(sx, sy)
       if (hitId !== null) {
+        const ann = state.annotations.find((a) => a.id === hitId)
+
         if (e.shiftKey || e.metaKey || e.ctrlKey) {
           dispatch({ type: 'SELECT', ids: [hitId], append: true })
+          if ((e.metaKey || e.ctrlKey) && ann?.state !== 'rejected' && ann?.reviewStatus === 'unconfirmed') {
+            dispatch({ type: 'CONFIRM', ids: [hitId] })
+          }
         } else if (state.selectedIds.size !== 1 || !state.selectedIds.has(hitId)) {
           dispatch({ type: 'SELECT', ids: [hitId] })
         }
-        const ann = state.annotations.find((a) => a.id === hitId)
         if (ann) {
           dragAnnotationOrigPos.current = { x: ann.x, y: ann.y }
         }
