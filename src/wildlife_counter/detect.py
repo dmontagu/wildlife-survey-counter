@@ -1,6 +1,6 @@
 """Blob detection for counting dark animals on light backgrounds (e.g., elk on snow).
 
-Extracted from scripts/count_elk5.py. This is the "naive" detection approach
+Extracted from research/count_elk5.py. This is the "naive" detection approach
 that works well for high-contrast aerial scenes.
 """
 
@@ -30,7 +30,9 @@ def detect_dark_blobs(
         area_max: Maximum blob area in pixels.
 
     Returns:
-        List of dicts with keys: cx, cy, area (centroid coordinates and blob area).
+        List of dicts with keys: cx, cy, area, mean_intensity — centroid coordinates,
+        blob area, and the mean grey level inside the blob contour (measured on the
+        blurred image the threshold was applied to, so it is comparable to `threshold`).
     """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -51,9 +53,28 @@ def detect_dark_blobs(
             if M['m00'] > 0:
                 cx = M['m10'] / M['m00']
                 cy = M['m01'] / M['m00']
-                blobs.append({'cx': cx, 'cy': cy, 'area': area})
+                blobs.append(
+                    {
+                        'cx': cx,
+                        'cy': cy,
+                        'area': area,
+                        'mean_intensity': _mean_contour_intensity(blurred, cnt),
+                    }
+                )
 
     return blobs
+
+
+def _mean_contour_intensity(gray: np.ndarray, contour: np.ndarray) -> float:
+    """Mean grey level of the pixels enclosed by `contour`.
+
+    Masks only the contour's bounding box rather than the whole frame, so the cost
+    stays proportional to blob size instead of image size.
+    """
+    x, y, bw, bh = cv2.boundingRect(contour)
+    mask = np.zeros((bh, bw), dtype=np.uint8)
+    cv2.drawContours(mask, [contour], -1, 255, thickness=cv2.FILLED, offset=(-x, -y))
+    return float(cv2.mean(gray[y : y + bh, x : x + bw], mask=mask)[0])
 
 
 def shadow_aware_nms(
@@ -134,11 +155,35 @@ def estimate_threshold(image: np.ndarray) -> int:
         # Moderately bright — slightly higher threshold
         return int(mean_brightness * 0.75)
     else:
-        # Dark/low-contrast — use Otsu's method
-        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        # Extract the Otsu threshold
+        # Dark/low-contrast — use Otsu's method to pick the threshold
         otsu_thresh, _ = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return int(otsu_thresh)
+
+
+# Every blob returned by the pipeline already passed the area and threshold filters,
+# so its confidence is floored here rather than being allowed to reach zero.
+CONFIDENCE_FLOOR = 0.1
+
+
+def blob_confidence(area: float, mean_intensity: float, threshold: int, area_max: int) -> float:
+    """Deterministic proxy confidence in (0, 1] for a single blob.
+
+    Blob detection produces no learned score, but the review UI's confidence slider
+    and histogram need one to be useful. Two cheap signals are averaged:
+
+    - **Size** — `area` against a soft cap of half `area_max`. Speckle noise is small,
+      real animals are closer to the calibrated size; anything at or above the soft
+      cap scores 1.0.
+    - **Darkness** — how far the blob's mean grey level sits below `threshold`. A blob
+      that is solid black scores 1.0; one that only just cleared the threshold scores ~0.
+
+    The average is floored at `CONFIDENCE_FLOOR` so that a blob at the minimum area
+    never reports 0, and rounded to three decimals to keep the JSON payload compact.
+    """
+    soft_cap = max(area_max * 0.5, 1.0)
+    size_score = min(1.0, area / soft_cap)
+    darkness_score = min(1.0, max(0.0, (threshold - mean_intensity) / max(threshold, 1)))
+    return round(max(CONFIDENCE_FLOOR, (size_score + darkness_score) / 2), 3)
 
 
 @logfire.instrument('detect_animals')
@@ -160,6 +205,9 @@ def detect_animals(
         List of annotation dicts matching the frontend schema:
         {id, x, y, bbox, detection_confidence, classification_confidence,
          source, label, state}
+
+        `detection_confidence` is the proxy score from `blob_confidence` — a value in
+        (0, 1] derived from blob size and darkness, not a learned probability.
     """
     image = cv2.imread(str(image_path))
     if image is None:
@@ -197,7 +245,12 @@ def detect_animals(
                 'x': round(blob['cx']),
                 'y': round(blob['cy']),
                 'bbox': None,
-                'detection_confidence': None,
+                'detection_confidence': blob_confidence(
+                    area=blob['area'],
+                    mean_intensity=blob['mean_intensity'],
+                    threshold=threshold,
+                    area_max=scaled_area_max,
+                ),
                 'classification_confidence': None,
                 'source': 'blob',
                 'label': 'elk',
