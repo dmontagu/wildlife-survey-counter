@@ -13,7 +13,7 @@ npx shadcn@latest add <component> --yes --overwrite
 ```
 **Do not hand-write shadcn components.** Always use the CLI so they get proper styling, animations, and the correct `radix-ui` imports.
 
-Currently installed: `button`, `dialog`, `dropdown-menu`
+Currently installed: `button`, `dialog`, `dropdown-menu`, `tooltip`
 
 Config: `components.json` in the frontend root.
 
@@ -21,17 +21,18 @@ Config: `components.json` in the frontend root.
 - **State**: React Context + `useReducer` with undo/redo via patches (`src/state.ts`, `src/types.ts`)
 - **Rendering**: RAF-based canvas with dirty flag (`src/hooks/useCanvasRenderer.ts`)
 - **Viewport**: Separate hook for pan/zoom (`src/hooks/useViewport.ts`)
-- **Interaction**: Modifier-key-driven with a toggleable Add/Select mode (`A` key):
-  - **Alt** = always create (force-add, ignores hit-testing). Alt+click = add point, Alt+drag = draw bbox
-  - **Shift** = extend selection. Shift+click = multi-select toggle
-  - **Cmd/Ctrl** = system/navigation. Cmd+scroll = zoom, Cmd+drag = pan
-  - **Space** (hold) = pan via pointer lock (no click needed)
-  - **No modifier**: mode-dependent. In Select mode: click = select. In Add mode: click empty = add point
+- **Interaction**: Modifier-key-driven, no tool modes — `Canvas.tsx`'s `onMouseDown` resolves the gesture roughly as follows (see the numbered `Priority` comments in `Canvas.tsx` for the exact order):
+  - **Alt** = bbox drawing, but only while the Advanced bbox tool is on (`state.bboxCreationEnabled`). Alt+drag = draw bbox, Alt+click = add point
+  - **Space** (hold) = pan by tracking raw mouse movement (no click needed)
+  - **Shift+Cmd/Ctrl+drag** = box-select and confirm in one gesture
+  - **Shift** = extend selection on a marker; box-select on empty canvas
+  - **Cmd/Ctrl** = click a marker to add it to the selection and confirm it; drag empty canvas to pan; Cmd/Ctrl+scroll = zoom (bare scroll pans on macOS and zooms elsewhere)
+  - **No modifier**: click empty canvas adds a point when nothing is selected, otherwise clears the selection; drag empty canvas = pan
   - Drag annotation = move, drag bbox handle = resize
   - Middle mouse drag = pan
   - Backspace = delete manual annotations, reject imported ones
-- **Config**: `src/config.ts` defines all keybindings and click behavior in one place
-- **Persistence**: localStorage saves/restores image filename + annotations across refreshes (prefix: `wsc:`)
+- **Config**: `src/config.ts` defines the keyboard shortcuts (`KEYS`), zoom bounds, and label categories; click behavior lives in `Canvas.tsx`
+- **Persistence**: localStorage saves/restores the current image, its annotations, and UI preferences across refreshes (prefix: `wsc:`); images opened from disk are stored as blobs in IndexedDB (`wsc-browser-images`, see `src/lib/browser-images.ts`)
 
 ## Path Aliases
 `@/` maps to `./src/` (configured in both `tsconfig.json` and `vite.config.ts`).

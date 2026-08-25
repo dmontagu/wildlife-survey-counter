@@ -87,7 +87,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
   // Space pan state (shared with viewport for Space+scroll zoom)
   const spaceHeld = vp.spaceHeld
 
-  // Keyboard shortcuts — C/R/Delete dispatch with empty ids, we intercept and fill selectedIds
+  // Keyboard shortcuts dispatch CONFIRM/UNCONFIRM/REJECT with empty ids; we intercept and fill in selectedIds
   const wrappedDispatch = useCallback(
     (action: Parameters<typeof dispatch>[0]) => {
       if (action.type === 'CONFIRM' && action.ids.length === 0 && state.selectedIds.size > 0) {
