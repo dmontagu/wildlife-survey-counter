@@ -81,10 +81,14 @@ clean:
 
 # --- Production Docker ---
 
+# Set WITH_ML=true to also install the [ml] extra (torch, transformers,
+# ultralytics) and pre-download model weights for the agent sandbox.
+WITH_ML ?= false
+
 .PHONY: docker-build
 docker-build:
-	@echo "Building Docker image"
-	docker build -t wildlife-survey-counter .
+	@echo "Building Docker image (WITH_ML=$(WITH_ML))"
+	docker build --build-arg WITH_ML=$(WITH_ML) -t wildlife-survey-counter .
 
 .PHONY: docker-run
 docker-run: docker-build
