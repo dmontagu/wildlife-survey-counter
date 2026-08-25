@@ -10,9 +10,16 @@ import ShortcutKey, { ShortcutSequence } from './components/ShortcutKey'
 import StatusBar from './components/StatusBar'
 import Toolbar from './components/Toolbar'
 import { Button } from './components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './components/ui/dialog'
 import WelcomeScreen from './components/WelcomeScreen'
-import { SHOW_DEV_SAMPLES } from './config'
+import { isAnnotationCategory, SHOW_DEV_SAMPLES } from './config'
 import { useViewport } from './hooks/useViewport'
 import { normalizeAnnotations, prepareImportedAnnotations, summarizeAnnotations } from './lib/annotations'
 import {
@@ -90,7 +97,11 @@ function buildImagePath(basePath: string, filename: string): string {
 function parseImagePath(
   pathname: string,
   search = '',
-): { kind: 'home' } | { kind: 'local-image'; basePath: string } | { kind: 'image'; basePath: string; filename: string } | null {
+):
+  | { kind: 'home' }
+  | { kind: 'local-image'; basePath: string }
+  | { kind: 'image'; basePath: string; filename: string }
+  | null {
   if (pathname === '/' || pathname === '') {
     return { kind: 'home' }
   }
@@ -424,8 +435,11 @@ export default function App() {
         lastEditedAt,
         counted: summary.counted,
         ignored: summary.ignored,
+        cows: summary.cows,
         bulls: summary.bulls,
         spikes: summary.spikes,
+        unclassifiedAntlerless: summary.unclassifiedAntlerless,
+        unclassified: summary.unclassified,
       }),
     )
   }, [])
@@ -451,7 +465,7 @@ export default function App() {
   }, [state.image])
 
   useEffect(() => {
-    localStorage.setItem(LS_ACTIVE_CATEGORY_KEY, state.activeCategory ?? 'cow')
+    localStorage.setItem(LS_ACTIVE_CATEGORY_KEY, state.activeCategory)
   }, [state.activeCategory])
 
   useEffect(() => {
@@ -492,10 +506,8 @@ export default function App() {
     }
 
     const savedCategory = localStorage.getItem(LS_ACTIVE_CATEGORY_KEY)
-    if (savedCategory === 'bull' || savedCategory === 'spike') {
+    if (isAnnotationCategory(savedCategory)) {
       dispatch({ type: 'SET_ACTIVE_CATEGORY', category: savedCategory })
-    } else if (savedCategory === 'cow') {
-      dispatch({ type: 'SET_ACTIVE_CATEGORY', category: null })
     }
 
     const savedBboxCreation = localStorage.getItem(LS_BBOX_CREATION_KEY)

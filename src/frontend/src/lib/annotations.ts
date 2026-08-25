@@ -1,9 +1,11 @@
+import { categoryOption, DEFAULT_CATEGORY, ELK_CATEGORY_OPTIONS, isAnnotationCategory } from '../config'
 import type {
   Annotation,
   AnnotationCategory,
   AnnotationReviewStatus,
   AnnotationState,
   AnnotationSummary,
+  CategorySummaryKey,
 } from '../types'
 
 const VALID_STATES = new Set<AnnotationState>(['auto-detected', 'confirmed', 'rejected', 'manually-added'])
@@ -19,12 +21,18 @@ function normalizeBbox(value: unknown): [number, number, number, number] | null 
   return [Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2)]
 }
 
+/**
+ * Resolve the class of a raw (possibly legacy) annotation. Older saves used `category: null` to mean cow,
+ * so null/missing/unknown values fall back to the default class rather than being rejected.
+ */
 function inferCategory(raw: Record<string, unknown>): AnnotationCategory {
-  if (raw.category === 'bull' || raw.category === 'spike') return raw.category
-  const label = typeof raw.label === 'string' ? raw.label.toLowerCase() : ''
+  if (isAnnotationCategory(raw.category)) return raw.category
+  const label = typeof raw.label === 'string' ? raw.label.toLowerCase().replace(/[-_]+/g, ' ') : ''
+  if (label.includes('unclassified antlerless')) return 'unclassified-antlerless'
+  if (label.includes('unclassified')) return 'unclassified'
   if (label.includes('bull')) return 'bull'
   if (label.includes('spike')) return 'spike'
-  return null
+  return DEFAULT_CATEGORY
 }
 
 export function normalizeAnnotation(raw: unknown, index = 0): Annotation {
@@ -76,6 +84,12 @@ export function isCountedAnnotation(annotation: Annotation): boolean {
   return !isIgnoredAnnotation(annotation)
 }
 
+export function emptyCategoryCounts(): Record<CategorySummaryKey, number> {
+  const counts = {} as Record<CategorySummaryKey, number>
+  for (const option of ELK_CATEGORY_OPTIONS) counts[option.summaryKey] = 0
+  return counts
+}
+
 export function summarizeAnnotations(annotations: Annotation[]): AnnotationSummary {
   return annotations.reduce<AnnotationSummary>(
     (summary, annotation) => {
@@ -85,13 +99,26 @@ export function summarizeAnnotations(annotations: Annotation[]): AnnotationSumma
       }
 
       summary.counted += 1
-      if (annotation.category === 'bull') summary.bulls += 1
-      if (annotation.category === 'spike') summary.spikes += 1
+      summary[categoryOption(annotation.category).summaryKey] += 1
       if (annotation.reviewStatus === 'unconfirmed') summary.unconfirmed += 1
       return summary
     },
-    { counted: 0, ignored: 0, bulls: 0, spikes: 0, unconfirmed: 0 },
+    { ...emptyCategoryCounts(), counted: 0, ignored: 0, unconfirmed: 0 },
   )
+}
+
+/**
+ * One-line count summary for the Recent Work lists, e.g. "12 counted, 3 bulls, 1 unclassified".
+ * The total always shows; individual classes (other than the default cow class) show only when non-zero.
+ */
+export function formatCountSummary(counts: { counted: number } & Record<CategorySummaryKey, number>): string {
+  const parts = [`${counts.counted} counted`]
+  for (const option of ELK_CATEGORY_OPTIONS) {
+    if (option.id === DEFAULT_CATEGORY) continue
+    const value = counts[option.summaryKey]
+    if (value > 0) parts.push(`${value} ${option.countLabel}`)
+  }
+  return parts.join(', ')
 }
 
 export function getVisibleAnnotations(
@@ -117,7 +144,5 @@ export function getDisplayNumbers(annotations: Annotation[]): Map<number, number
 }
 
 export function categoryBadgeLabel(category: AnnotationCategory): string | null {
-  if (category === 'bull') return 'B'
-  if (category === 'spike') return 'S'
-  return null
+  return categoryOption(category).badge
 }

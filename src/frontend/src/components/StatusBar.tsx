@@ -1,5 +1,6 @@
 import { ChevronDownIcon, DownloadIcon } from 'lucide-react'
-import { CATEGORY_COLORS, REVIEW_STATUS_COLORS } from '../colors'
+import { REVIEW_STATUS_COLORS } from '../colors'
+import { DEFAULT_CATEGORY, ELK_CATEGORY_OPTIONS } from '../config'
 import { summarizeAnnotations } from '../lib/annotations'
 import { useAppState } from '../state'
 import BuildInfo from './BuildInfo'
@@ -38,9 +39,16 @@ export default function StatusBar({
     <div className="border-t border-border bg-card/70 px-3 py-2 text-sm">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2">
         <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
-        <StatusChip badge="U" color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
-        <StatusChip badge="B" color={CATEGORY_COLORS.bull} label="Bulls" value={summary.bulls} />
-        <StatusChip badge="S" color={CATEGORY_COLORS.spike} label="Spikes" value={summary.spikes} />
+        <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
+        {ELK_CATEGORY_OPTIONS.filter((option) => option.id !== DEFAULT_CATEGORY).map((option) => (
+          <StatusChip
+            key={option.id}
+            badge={option.badge ?? undefined}
+            color={option.color}
+            label={option.label}
+            value={summary[option.summaryKey]}
+          />
+        ))}
         <span className="text-muted-foreground tabular-nums">{state.selectedIds.size} selected</span>
         <span className="text-muted-foreground tabular-nums">
           {state.image.width} × {state.image.height}px

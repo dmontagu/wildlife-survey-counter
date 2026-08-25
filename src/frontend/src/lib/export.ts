@@ -1,4 +1,5 @@
 import { categoryColorFor, MARKER_HALO_COLOR, markerColorFor, textColorFor } from '../colors'
+import { categoryOption, ELK_CATEGORY_OPTIONS } from '../config'
 import type { Annotation, ImageInfo } from '../types'
 import { categoryBadgeLabel, getDisplayNumbers, summarizeAnnotations } from './annotations'
 import { displayNameFor, extensionForFilename, stemForFilename } from './image-names'
@@ -83,20 +84,22 @@ function drawCategoryIndicator(
   stroke: string,
   scale: number,
 ) {
-  if (!category) return
+  const { indicator } = categoryOption(category)
+  if (indicator === 'none') return
 
+  ctx.save()
   ctx.strokeStyle = stroke
   ctx.lineWidth = Math.max(2, 2.5 * scale)
 
-  if (category === 'bull') {
+  if (indicator === 'diamond') {
+    drawDiamond(ctx, x, y, radius + Math.max(4.5, 4.75 * scale))
+  } else {
+    if (indicator === 'dashed-ring') ctx.setLineDash([3.5 * scale, 3 * scale])
     ctx.beginPath()
     ctx.arc(x, y, radius + Math.max(2.5, 2.5 * scale), 0, Math.PI * 2)
-    ctx.stroke()
-    return
   }
-
-  drawDiamond(ctx, x, y, radius + Math.max(4.5, 4.75 * scale))
   ctx.stroke()
+  ctx.restore()
 }
 
 function drawCategoryBadge(
@@ -109,14 +112,17 @@ function drawCategoryBadge(
   const label = categoryBadgeLabel(category)
   if (!label) return
 
-  const badgeWidth = 12 * scale
+  ctx.save()
+  // Keep in sync with drawCategoryBadge in hooks/useCanvasRenderer.ts: the box grows to fit "UA".
+  ctx.font = `bold ${7 * scale}px sans-serif`
+  const badgeWidth = Math.max(12 * scale, ctx.measureText(label).width + 6 * scale)
   const badgeHeight = 10 * scale
   const bx = x + 7 * scale
   const by = y - 11 * scale
   const radius = 3 * scale
   const stroke = categoryColorFor(category)
 
-  if (category === 'spike') {
+  if (categoryOption(category).indicator === 'diamond') {
     drawDiamond(ctx, bx + badgeWidth / 2, by + badgeHeight / 2, 6 * scale)
   } else {
     drawRoundedRect(ctx, bx, by, badgeWidth, badgeHeight, radius)
@@ -129,10 +135,10 @@ function drawCategoryBadge(
   ctx.stroke()
 
   ctx.fillStyle = stroke
-  ctx.font = `bold ${7 * scale}px sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(label, bx + badgeWidth / 2, by + badgeHeight / 2 + 0.25 * scale)
+  ctx.restore()
 }
 
 function drawAnnotationBbox(
@@ -190,11 +196,15 @@ function renderAnnotatedCanvas(
 
   for (const annotation of visibleAnnotations) {
     const color = markerColorFor(annotation)
-    const categoryColor = annotation.category ? categoryColorFor(annotation.category) : null
-
-    if (categoryColor) {
-      drawCategoryIndicator(ctx, annotation.x, annotation.y, annotation.category, radius, categoryColor, markerScale)
-    }
+    drawCategoryIndicator(
+      ctx,
+      annotation.x,
+      annotation.y,
+      annotation.category,
+      radius,
+      categoryColorFor(annotation.category),
+      markerScale,
+    )
 
     ctx.save()
     ctx.shadowColor = MARKER_HALO_COLOR
@@ -224,17 +234,42 @@ function renderAnnotatedCanvas(
     }
   }
 
+  drawSummaryPanel(ctx, image, annotations, imageLabel)
+
+  return canvas
+}
+
+/**
+ * Count panel in the top-left of the review image: title, total, then one cell per elk class laid out in
+ * two columns, then the unconfirmed count. The panel grows to fit however many classes exist.
+ */
+function drawSummaryPanel(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  annotations: Annotation[],
+  imageLabel: string,
+) {
   const summary = summarizeAnnotations(annotations)
   const panelScale = Math.min(2.6, Math.max(1, Math.max(image.width, image.height) / 1600))
-  const panelWidth = Math.max(220, 236 * panelScale)
-  const panelHeight = 84 * panelScale
   const panelX = 16
   const panelY = 16
   const paddingX = 12 * panelScale
+  const lineHeight = 17 * panelScale
+  const columnGap = 14 * panelScale
+  const bodyFont = `${12 * panelScale}px sans-serif`
+
+  const classCells = ELK_CATEGORY_OPTIONS.map((option) => `${option.label}: ${summary[option.summaryKey]}`)
+  const classRows = Math.ceil(classCells.length / 2)
+
+  ctx.font = bodyFont
+  const columnWidth = Math.max(100 * panelScale, ...classCells.map((cell) => ctx.measureText(cell).width)) + columnGap
+  const panelWidth = Math.max(236 * panelScale, paddingX * 2 + columnWidth * 2 - columnGap)
+
   const titleY = panelY + 22 * panelScale
-  const line1Y = panelY + 44 * panelScale
-  const line2Y = panelY + 63 * panelScale
-  const line3Y = panelY + 80 * panelScale
+  const countedY = panelY + 44 * panelScale
+  const classesY = countedY + lineHeight
+  const unconfirmedY = classesY + classRows * lineHeight
+  const panelHeight = unconfirmedY - panelY + 10 * panelScale
 
   ctx.fillStyle = 'rgba(22, 28, 24, 0.84)'
   drawRoundedRect(ctx, panelX, panelY, panelWidth, panelHeight, 12 * panelScale)
@@ -248,13 +283,14 @@ function renderAnnotatedCanvas(
   ctx.textBaseline = 'alphabetic'
   ctx.font = `bold ${14 * panelScale}px sans-serif`
   ctx.fillText(imageLabel, panelX + paddingX, titleY)
-  ctx.font = `${12 * panelScale}px sans-serif`
-  ctx.fillText(`Counted: ${summary.counted}`, panelX + paddingX, line1Y)
-  ctx.fillText(`Bulls: ${summary.bulls}`, panelX + paddingX, line2Y)
-  ctx.fillText(`Spikes: ${summary.spikes}`, panelX + 112 * panelScale, line2Y)
-  ctx.fillText(`Unconfirmed: ${summary.unconfirmed}`, panelX + paddingX, line3Y)
-
-  return canvas
+  ctx.font = bodyFont
+  ctx.fillText(`Counted: ${summary.counted}`, panelX + paddingX, countedY)
+  classCells.forEach((cell, index) => {
+    const column = index % 2
+    const row = Math.floor(index / 2)
+    ctx.fillText(cell, panelX + paddingX + column * columnWidth, classesY + row * lineHeight)
+  })
+  ctx.fillText(`Unconfirmed: ${summary.unconfirmed}`, panelX + paddingX, unconfirmedY)
 }
 
 function buildExportNames(image: Pick<ImageInfo, 'filename' | 'displayName'>) {

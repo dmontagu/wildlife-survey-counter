@@ -7,6 +7,7 @@ import {
   SELECTION_FILL,
   textColorFor,
 } from '../colors'
+import { categoryOption } from '../config'
 import { categoryBadgeLabel, getDisplayNumbers, getVisibleAnnotations } from '../lib/annotations'
 import type { Annotation, AppState } from '../types'
 import type { ViewportActions } from './useViewport'
@@ -74,20 +75,22 @@ function drawCategoryIndicator(
   radius: number,
   stroke: string,
 ) {
-  if (!category) return
+  const { indicator } = categoryOption(category)
+  if (indicator === 'none') return
 
+  ctx.save()
   ctx.strokeStyle = stroke
   ctx.lineWidth = 2.6
 
-  if (category === 'bull') {
+  if (indicator === 'diamond') {
+    drawDiamond(ctx, x, y, radius + 4.75)
+  } else {
+    if (indicator === 'dashed-ring') ctx.setLineDash([3.5, 3])
     ctx.beginPath()
     ctx.arc(x, y, radius + 2.5, 0, Math.PI * 2)
-    ctx.stroke()
-    return
   }
-
-  drawDiamond(ctx, x, y, radius + 4.75)
   ctx.stroke()
+  ctx.restore()
 }
 
 function drawCategoryBadge(
@@ -100,24 +103,30 @@ function drawCategoryBadge(
   const label = categoryBadgeLabel(category)
   if (!label) return
 
-  const badgeX = x + 12
+  // Badge sits to the upper right of the marker; the left edge stays fixed and the box grows
+  // to fit longer labels such as "UA".
+  const badgeLeft = x + 5
   const badgeY = y - 10
+  const badgeHeight = 10
 
   ctx.save()
+  ctx.font = 'bold 8px sans-serif'
+  const badgeWidth = Math.max(14, Math.ceil(ctx.measureText(label).width) + 6)
+  const badgeX = badgeLeft + badgeWidth / 2
+
   ctx.fillStyle = 'rgba(20, 27, 24, 0.92)'
   ctx.strokeStyle = stroke
   ctx.lineWidth = 1.5
 
-  if (category === 'spike') {
+  if (categoryOption(category).indicator === 'diamond') {
     drawDiamond(ctx, badgeX, badgeY, 7)
   } else {
-    drawRoundedRect(ctx, badgeX - 7, badgeY - 5, 14, 10, 3)
+    drawRoundedRect(ctx, badgeLeft, badgeY - badgeHeight / 2, badgeWidth, badgeHeight, 3)
   }
 
   ctx.fill()
   ctx.stroke()
   ctx.fillStyle = stroke
-  ctx.font = 'bold 8px sans-serif'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(label, badgeX, badgeY + 0.5)

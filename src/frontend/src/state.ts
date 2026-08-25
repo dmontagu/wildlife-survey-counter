@@ -1,4 +1,5 @@
 import { createContext, type Dispatch, useContext } from 'react'
+import { categoryOption, DEFAULT_CATEGORY } from './config'
 import { normalizeAnnotations } from './lib/annotations'
 import type { Action, Annotation, AnnotationPatch, AppState, UndoEntry } from './types'
 
@@ -6,7 +7,7 @@ export const initialState: AppState = {
   image: null,
   annotations: [],
   selectedIds: new Set(),
-  activeCategory: null,
+  activeCategory: DEFAULT_CATEGORY,
   confidenceThreshold: 0,
   showBboxes: true,
   bboxCreationEnabled: false,
@@ -166,9 +167,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         annotations: state.annotations.map((a) =>
-          ids.has(a.id) && a.state !== 'manually-added'
-            ? { ...a, state: 'rejected', reviewStatus: 'confirmed' }
-            : a,
+          ids.has(a.id) && a.state !== 'manually-added' ? { ...a, state: 'rejected', reviewStatus: 'confirmed' } : a,
         ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
@@ -293,10 +292,7 @@ export function reducer(state: AppState, action: Action): AppState {
       if (patches.length === 0) return state
 
       const entry: UndoEntry = {
-        description:
-          action.category === null
-            ? `Mark ${patches.length} annotation(s) as cow`
-            : `Mark ${patches.length} annotation(s) as ${action.category}`,
+        description: `Mark ${patches.length} annotation(s) as ${categoryOption(action.category).label.toLowerCase()}`,
         patches,
       }
 
@@ -442,7 +438,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const entry = state.undoStack[state.undoStack.length - 1]!
       return {
         ...state,
-        annotations: entry.replaceAll ? cloneAnnotations(entry.replaceAll.before) : applyPatches(state.annotations, entry.patches ?? [], 'undo'),
+        annotations: entry.replaceAll
+          ? cloneAnnotations(entry.replaceAll.before)
+          : applyPatches(state.annotations, entry.patches ?? [], 'undo'),
         selectedIds: new Set(),
         undoStack: state.undoStack.slice(0, -1),
         redoStack: [...state.redoStack, entry],
@@ -454,7 +452,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const entry = state.redoStack[state.redoStack.length - 1]!
       return {
         ...state,
-        annotations: entry.replaceAll ? cloneAnnotations(entry.replaceAll.after) : applyPatches(state.annotations, entry.patches ?? [], 'redo'),
+        annotations: entry.replaceAll
+          ? cloneAnnotations(entry.replaceAll.after)
+          : applyPatches(state.annotations, entry.patches ?? [], 'redo'),
         selectedIds: new Set(),
         redoStack: state.redoStack.slice(0, -1),
         undoStack: [...state.undoStack, entry],

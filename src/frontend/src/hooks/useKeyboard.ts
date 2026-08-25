@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react'
 import { useEffect } from 'react'
-import { KEYS } from '../config'
+import { ELK_CATEGORY_OPTIONS, KEYS, nextCategory } from '../config'
 import type { Action, AnnotationCategory } from '../types'
 
 function normalizedKey(value: string): string {
@@ -21,12 +21,6 @@ function matchesKey(
   return (
     normalizedKey(e.key) === normalizedKey(binding.key) && meta === !!binding.meta && e.shiftKey === !!binding.shift
   )
-}
-
-function nextCategory(category: AnnotationCategory): AnnotationCategory {
-  if (category === null) return 'bull'
-  if (category === 'bull') return 'spike'
-  return null
 }
 
 export function useKeyboard(
@@ -98,6 +92,13 @@ export function useKeyboard(
       if (matchesKey(e, KEYS.cycleCategory)) {
         dispatch({ type: 'SET_ACTIVE_CATEGORY', category: nextCategory(activeCategory) })
         return
+      }
+
+      for (const option of ELK_CATEGORY_OPTIONS) {
+        if (option.shortcut && matchesKey(e, [option.shortcut])) {
+          dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+          return
+        }
       }
     }
 

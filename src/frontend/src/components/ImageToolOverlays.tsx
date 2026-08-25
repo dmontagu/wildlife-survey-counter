@@ -1,8 +1,8 @@
 import { CheckIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { ELK_CATEGORY_OPTIONS } from '../config'
-import { useAppState, useDispatch } from '../state'
 import { isIgnoredAnnotation } from '../lib/annotations'
+import { useAppState, useDispatch } from '../state'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
 
@@ -17,7 +17,7 @@ export default function ImageToolOverlays() {
 
   const selectedCategory = useMemo(() => {
     if (selectedAnnotations.length === 0) return undefined
-    const first = selectedAnnotations[0]?.category ?? null
+    const first = selectedAnnotations[0]!.category
     return selectedAnnotations.every((annotation) => annotation.category === first) ? first : undefined
   }, [selectedAnnotations])
   const confirmableSelectionCount = useMemo(
@@ -47,9 +47,10 @@ export default function ImageToolOverlays() {
         >
           {ELK_CATEGORY_OPTIONS.map((option) => (
             <FloatingActionButton
-              key={option.label}
+              key={option.id}
               active={displayCategory === option.id}
               label={option.label}
+              title={option.shortcut ? `${option.description} (${option.shortcut.toUpperCase()})` : option.description}
               onClick={() => {
                 if (state.selectedIds.size > 0) {
                   dispatch({
@@ -138,12 +139,14 @@ function FloatingActionButton({
   disabled = false,
   icon: Icon,
   label,
+  title,
   onClick,
 }: {
   active?: boolean
   disabled?: boolean
   icon?: React.ComponentType<{ className?: string }>
   label: string
+  title?: string
   onClick: () => void
 }) {
   return (
@@ -151,6 +154,7 @@ function FloatingActionButton({
       variant={active ? 'default' : 'outline'}
       size="sm"
       disabled={disabled}
+      title={title}
       onClick={onClick}
       className={[
         'h-9 gap-2 rounded-xl border-white/10 bg-slate-900/65 text-slate-50 shadow-none backdrop-blur-sm',

@@ -1,4 +1,4 @@
-import type { AnnotationCategory } from './types'
+import type { AnnotationCategory, CategorySummaryKey } from './types'
 
 /** Keyboard shortcuts — consumed by useKeyboard.ts */
 export const KEYS = {
@@ -12,6 +12,7 @@ export const KEYS = {
   cycleMarkerVisibility: ['v'],
   help: ['?'],
   cycleCategory: ['e'],
+  // Direct per-class shortcuts live on ELK_CATEGORY_OPTIONS[].shortcut below.
 }
 
 /** Zoom speed bounds */
@@ -26,30 +27,103 @@ export const UPDATES_FORM_ACTION =
   'https://docs.google.com/forms/d/e/1FAIpQLSeUXZkyX_QeI0da8xmAcI2bEiBKFaP3JFIsijEbHDkwC6AFXQ/formResponse'
 export const UPDATES_FORM_EMAIL_FIELD = 'entry.1653319143'
 
+export type CategoryIndicator = 'none' | 'ring' | 'dashed-ring' | 'diamond'
+
 export interface LabelCategoryOption {
   id: AnnotationCategory
+  /** Display name used in the palette, status bar, help overlay, and export panel. */
   label: string
-  badge: string
+  /** Lowercase plural-ish noun used after a count ("3 bulls", "2 unclassified antlerless"). */
+  countLabel: string
+  /** Short text drawn in the marker badge; null means no badge (plain marker). */
+  badge: string | null
+  /** Shape drawn around the marker. The diamond indicator also gets a diamond badge. */
+  indicator: CategoryIndicator
+  /** Single-letter keyboard shortcut (no modifier); null means only reachable via the palette / E cycle. */
+  shortcut: string | null
   description: string
+  /** Marker, badge, and status chip colour. */
+  color: string
+  /** Field on AnnotationSummary / RecentImageRecord that counts this class. */
+  summaryKey: CategorySummaryKey
 }
 
-export const ELK_CATEGORY_OPTIONS: LabelCategoryOption[] = [
+export const DEFAULT_CATEGORY: AnnotationCategory = 'cow'
+
+/**
+ * Single source of truth for elk classes. Adding a class here is all that is needed for
+ * rendering, keyboard shortcuts, counts, the status bar, the help overlay, and exports.
+ */
+export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
-    id: null,
+    id: 'cow',
     label: 'Cow',
-    badge: 'COW',
+    countLabel: 'cows',
+    badge: null,
+    indicator: 'none',
+    shortcut: null,
     description: 'Set new markers to cow and clear special status on the current selection',
+    color: '#17B8FF',
+    summaryKey: 'cows',
   },
   {
     id: 'bull',
     label: 'Bull',
+    countLabel: 'bulls',
     badge: 'B',
+    indicator: 'ring',
+    shortcut: 'b',
     description: 'Set new markers to bull and update the current selection',
+    color: '#FF5D95',
+    summaryKey: 'bulls',
   },
   {
     id: 'spike',
     label: 'Spike',
+    countLabel: 'spikes',
     badge: 'S',
+    indicator: 'diamond',
+    shortcut: 's',
     description: 'Set new markers to spike and update the current selection',
+    color: '#73E46F',
+    summaryKey: 'spikes',
+  },
+  {
+    id: 'unclassified-antlerless',
+    label: 'Unclassified antlerless',
+    countLabel: 'unclassified antlerless',
+    badge: 'UA',
+    indicator: 'dashed-ring',
+    shortcut: 'n',
+    description: 'Set new markers to unclassified antlerless (cow or calf) and update the current selection',
+    color: '#C084FC',
+    summaryKey: 'unclassifiedAntlerless',
+  },
+  {
+    id: 'unclassified',
+    label: 'Unclassified',
+    countLabel: 'unclassified',
+    badge: 'U',
+    indicator: 'dashed-ring',
+    shortcut: 'x',
+    description: 'Set new markers to unclassified (elk of unknown type) and update the current selection',
+    color: '#D4D4D8',
+    summaryKey: 'unclassified',
   },
 ]
+
+const CATEGORY_OPTIONS_BY_ID = new Map(ELK_CATEGORY_OPTIONS.map((option) => [option.id, option]))
+
+export function isAnnotationCategory(value: unknown): value is AnnotationCategory {
+  return typeof value === 'string' && CATEGORY_OPTIONS_BY_ID.has(value as AnnotationCategory)
+}
+
+export function categoryOption(category: AnnotationCategory): LabelCategoryOption {
+  return CATEGORY_OPTIONS_BY_ID.get(category) ?? ELK_CATEGORY_OPTIONS[0]!
+}
+
+/** The class after `category` in palette order, wrapping around (used by the E shortcut). */
+export function nextCategory(category: AnnotationCategory): AnnotationCategory {
+  const index = ELK_CATEGORY_OPTIONS.findIndex((option) => option.id === category)
+  return ELK_CATEGORY_OPTIONS[(index + 1) % ELK_CATEGORY_OPTIONS.length]!.id
+}
