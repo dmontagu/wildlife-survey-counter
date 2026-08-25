@@ -276,7 +276,7 @@ export default function WelcomeScreen({
                           Notify me
                         </Button>
                       </form>
-                      <iframe title="" name="updates-signup-target" className="hidden" />
+                      <iframe title="Signup form submission target" name="updates-signup-target" className="hidden" />
                       {updatesSubmitted ? (
                         <p className="mt-2 text-xs leading-5 text-primary">
                           Thanks. I’ll use this only for tool updates.
@@ -312,27 +312,25 @@ export default function WelcomeScreen({
               </div>
 
               {recentImages.length > 0 ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Sort
-                    </span>
-                    <Button
-                      size="xs"
-                      variant={recentImagesSort === 'last-edited' ? 'secondary' : 'outline'}
-                      onClick={() => onChangeRecentImagesSort('last-edited')}
-                    >
-                      Last edited
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant={recentImagesSort === 'alphabetical' ? 'secondary' : 'outline'}
-                      onClick={() => onChangeRecentImagesSort('alphabetical')}
-                    >
-                      Alphabetical
-                    </Button>
-                  </div>
-                </>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Sort
+                  </span>
+                  <Button
+                    size="xs"
+                    variant={recentImagesSort === 'last-edited' ? 'secondary' : 'outline'}
+                    onClick={() => onChangeRecentImagesSort('last-edited')}
+                  >
+                    Last edited
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={recentImagesSort === 'alphabetical' ? 'secondary' : 'outline'}
+                    onClick={() => onChangeRecentImagesSort('alphabetical')}
+                  >
+                    Alphabetical
+                  </Button>
+                </div>
               ) : null}
 
               {recentImages.length > 0 ? (
