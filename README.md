@@ -61,6 +61,17 @@ make docker-build   # Build image
 make docker-run     # Build + run locally on :8100
 ```
 
+The default image is headless and lean — FastAPI, OpenCV (headless), and the built frontend, with
+no PyTorch and no model weights. It exposes a Docker healthcheck on `GET /api/health`.
+
+To also install the optional ML stack (torch, transformers, ultralytics) and pre-download the
+weights used by the agent sandbox, build with `WITH_ML=true`. The resulting image is several GB:
+
+```bash
+make docker-build WITH_ML=true
+# or: docker build --build-arg WITH_ML=true -t wildlife-survey-counter .
+```
+
 ## Detection Methods
 
 | Method | Best For | Status |
