@@ -1,5 +1,5 @@
-import path from 'node:path'
 import { execSync } from 'node:child_process'
+import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react-swc'
 import { defineConfig } from 'vite'
