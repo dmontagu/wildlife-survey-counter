@@ -482,13 +482,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
   )
 
   const handleDragMove = useCallback(
-    (event: {
-      clientX: number
-      clientY: number
-      buttons: number
-      movementX: number
-      movementY: number
-    }) => {
+    (event: { clientX: number; clientY: number; buttons: number; movementX: number; movementY: number }) => {
       // Skip during pointer lock (Space pan handled by raw mousemove listener)
       if (spaceHeld.current) return
 
@@ -577,13 +571,7 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
   )
 
   const finalizeDrag = useCallback(
-    (event: {
-      clientX: number
-      clientY: number
-      shiftKey: boolean
-      metaKey: boolean
-      ctrlKey: boolean
-    }) => {
+    (event: { clientX: number; clientY: number; shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
       const [sx, sy] = getCanvasPosFromClient(event.clientX, event.clientY)
       const dt = dragType.current
 

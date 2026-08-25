@@ -166,9 +166,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         annotations: state.annotations.map((a) =>
-          ids.has(a.id) && a.state !== 'manually-added'
-            ? { ...a, state: 'rejected', reviewStatus: 'confirmed' }
-            : a,
+          ids.has(a.id) && a.state !== 'manually-added' ? { ...a, state: 'rejected', reviewStatus: 'confirmed' } : a,
         ),
         undoStack: [...state.undoStack, entry],
         redoStack: [],
@@ -442,7 +440,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const entry = state.undoStack[state.undoStack.length - 1]!
       return {
         ...state,
-        annotations: entry.replaceAll ? cloneAnnotations(entry.replaceAll.before) : applyPatches(state.annotations, entry.patches ?? [], 'undo'),
+        annotations: entry.replaceAll
+          ? cloneAnnotations(entry.replaceAll.before)
+          : applyPatches(state.annotations, entry.patches ?? [], 'undo'),
         selectedIds: new Set(),
         undoStack: state.undoStack.slice(0, -1),
         redoStack: [...state.redoStack, entry],
@@ -454,7 +454,9 @@ export function reducer(state: AppState, action: Action): AppState {
       const entry = state.redoStack[state.redoStack.length - 1]!
       return {
         ...state,
-        annotations: entry.replaceAll ? cloneAnnotations(entry.replaceAll.after) : applyPatches(state.annotations, entry.patches ?? [], 'redo'),
+        annotations: entry.replaceAll
+          ? cloneAnnotations(entry.replaceAll.after)
+          : applyPatches(state.annotations, entry.patches ?? [], 'redo'),
         selectedIds: new Set(),
         redoStack: state.redoStack.slice(0, -1),
         undoStack: [...state.undoStack, entry],
