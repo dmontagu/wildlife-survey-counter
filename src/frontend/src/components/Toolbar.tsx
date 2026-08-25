@@ -9,7 +9,6 @@ import BrandMark from './BrandMark'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -22,6 +21,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 interface ToolbarProps {
   currentDisplayName?: string

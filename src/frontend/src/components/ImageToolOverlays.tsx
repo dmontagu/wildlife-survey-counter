@@ -1,8 +1,8 @@
 import { CheckIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { ELK_CATEGORY_OPTIONS } from '../config'
-import { useAppState, useDispatch } from '../state'
 import { isIgnoredAnnotation } from '../lib/annotations'
+import { useAppState, useDispatch } from '../state'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
 
