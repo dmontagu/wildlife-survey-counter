@@ -18,7 +18,8 @@ from starlette.responses import StreamingResponse
 from wildlife_counter.config import settings
 from wildlife_counter.detect import detect_animals
 
-logfire.configure(send_to_logfire=False)
+# Sends only when a LOGFIRE_TOKEN is configured; otherwise instrumentation is a no-op.
+logfire.configure(send_to_logfire='if-token-present')
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
 
@@ -337,8 +338,8 @@ async def get_detection(run_id: str):
 # --- Static Files & SPA Fallback (must be last) ---
 
 # Mount samples directory for serving images
-if settings.samples_dir.exists():
-    app.mount('/samples', StaticFiles(directory=str(settings.samples_dir)), name='samples')
+settings.samples_dir.mkdir(parents=True, exist_ok=True)
+app.mount('/samples', StaticFiles(directory=str(settings.samples_dir)), name='samples')
 
 # Mount uploads directory
 settings.uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -398,9 +399,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=settings.port)
     parser.add_argument('--host', type=str, default=settings.host)
+    parser.add_argument('--reload', action='store_true', help="Enable uvicorn's auto-reloader (dev only)")
     args = parser.parse_args()
     uvicorn.run(
-        'wildlife_counter.server:app', host=args.host, port=args.port, reload=True, log_config=UVICORN_LOG_CONFIG
+        'wildlife_counter.server:app',
+        host=args.host,
+        port=args.port,
+        reload=args.reload or settings.reload,
+        log_config=UVICORN_LOG_CONFIG,
     )
 
 

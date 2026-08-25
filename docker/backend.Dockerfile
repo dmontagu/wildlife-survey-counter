@@ -24,4 +24,5 @@ EXPOSE 8100
 
 # --no-sync: deps are already installed at build time, skip re-syncing
 # (uv run without this flag tries to install the project, which fails without README.md)
-CMD ["uv", "run", "--no-sync", "python", "-m", "wildlife_counter.server"]
+# --reload: this image is for local dev, where src/wildlife_counter is volume-mounted
+CMD ["uv", "run", "--no-sync", "python", "-m", "wildlife_counter.server", "--reload"]
