@@ -38,7 +38,12 @@ export default function StatusBar({
     <div className="border-t border-border bg-card/70 px-3 py-2 text-sm">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2">
         <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
-        <StatusChip badge="U" color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
+        <StatusChip
+          badge="U"
+          color={REVIEW_STATUS_COLORS.unconfirmed}
+          label="Unconfirmed"
+          value={summary.unconfirmed}
+        />
         <StatusChip badge="B" color={CATEGORY_COLORS.bull} label="Bulls" value={summary.bulls} />
         <StatusChip badge="S" color={CATEGORY_COLORS.spike} label="Spikes" value={summary.spikes} />
         <span className="text-muted-foreground tabular-nums">{state.selectedIds.size} selected</span>

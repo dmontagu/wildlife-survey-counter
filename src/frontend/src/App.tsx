@@ -10,7 +10,14 @@ import ShortcutKey, { ShortcutSequence } from './components/ShortcutKey'
 import StatusBar from './components/StatusBar'
 import Toolbar from './components/Toolbar'
 import { Button } from './components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './components/ui/dialog'
 import WelcomeScreen from './components/WelcomeScreen'
 import { SHOW_DEV_SAMPLES } from './config'
 import { useViewport } from './hooks/useViewport'
@@ -90,7 +97,11 @@ function buildImagePath(basePath: string, filename: string): string {
 function parseImagePath(
   pathname: string,
   search = '',
-): { kind: 'home' } | { kind: 'local-image'; basePath: string } | { kind: 'image'; basePath: string; filename: string } | null {
+):
+  | { kind: 'home' }
+  | { kind: 'local-image'; basePath: string }
+  | { kind: 'image'; basePath: string; filename: string }
+  | null {
   if (pathname === '/' || pathname === '') {
     return { kind: 'home' }
   }
