@@ -1,3 +1,8 @@
+import { stripMetadataLossless } from './image-metadata'
+
+/** Types we can rewrite byte-for-byte. Anything else goes through the canvas re-encode. */
+const LOSSLESS_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png'])
+
 function renameForMimeType(filename: string, mimeType: string): string {
   const stem = filename.replace(/\.[^.]+$/, '')
 
@@ -32,17 +37,23 @@ export function loadImageElementFromBlob(blob: Blob): Promise<HTMLImageElement> 
   })
 }
 
-export async function stripImageMetadata(file: File): Promise<File> {
-  if (!file.type.startsWith('image/')) return file
-
-  const bitmap = await createImageBitmap(file)
+/**
+ * Fallback for formats we cannot rewrite losslessly: decode and re-encode, which drops every
+ * metadata block as a side effect. `imageOrientation: 'from-image'` bakes any EXIF rotation into
+ * the pixels so the re-encoded photo is not left sideways.
+ *
+ * Throws rather than quietly returning the original file — the caller decides what an
+ * un-strippable image means, instead of the behaviour silently varying by browser.
+ */
+async function reencodeWithoutMetadata(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   const canvas = document.createElement('canvas')
   canvas.width = bitmap.width
   canvas.height = bitmap.height
   const ctx = canvas.getContext('2d')
   if (!ctx) {
     bitmap.close()
-    return file
+    throw new Error('Could not get a 2D canvas context to strip image metadata')
   }
 
   ctx.drawImage(bitmap, 0, 0)
@@ -53,10 +64,32 @@ export async function stripImageMetadata(file: File): Promise<File> {
     canvas.toBlob(resolve, preferredType, preferredType === 'image/jpeg' ? 0.92 : undefined)
   })
 
-  if (!blob) return file
+  if (!blob) throw new Error('Could not re-encode image to strip metadata')
 
   return new File([blob], renameForMimeType(file.name, blob.type), {
     type: blob.type,
     lastModified: Date.now(),
   })
+}
+
+/**
+ * Remove EXIF (including GPS), XMP, IPTC and comment metadata before an image is persisted.
+ *
+ * JPEG and PNG are rewritten at the container level, so the compressed pixels are bit-identical to
+ * the original and the ICC colour profile survives. Other formats — and JPEGs with a rotation that
+ * only the EXIF orientation tag describes — fall back to a canvas re-encode.
+ */
+export async function stripImageMetadata(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) return file
+
+  if (LOSSLESS_TYPES.has(file.type)) {
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const stripped = stripMetadataLossless(bytes)
+    if (stripped) {
+      // The container type is unchanged, so the original filename still fits.
+      return new File([stripped], file.name, { type: stripped.type, lastModified: Date.now() })
+    }
+  }
+
+  return reencodeWithoutMetadata(file)
 }
