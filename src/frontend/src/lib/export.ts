@@ -113,7 +113,7 @@ function drawCategoryBadge(
   if (!label) return
 
   ctx.save()
-  // Keep in sync with drawCategoryBadge in hooks/useCanvasRenderer.ts: the box grows to fit "UA".
+  // Keep in sync with drawCategoryBadge in hooks/useCanvasRenderer.ts: the box grows to fit wider labels.
   ctx.font = `bold ${7 * scale}px sans-serif`
   const badgeWidth = Math.max(12 * scale, ctx.measureText(label).width + 6 * scale)
   const badgeHeight = 10 * scale

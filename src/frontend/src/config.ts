@@ -33,6 +33,8 @@ export interface LabelCategoryOption {
   id: AnnotationCategory
   /** Display name used in the palette, status bar, help overlay, and export panel. */
   label: string
+  /** One-letter shorthand shown in the class palette; the selected class is spelled out next to it. */
+  shortLabel: string
   /** Lowercase plural-ish noun used after a count ("3 bulls", "2 unclassified antlerless"). */
   countLabel: string
   /** Short text drawn in the marker badge; null means no badge (plain marker). */
@@ -59,6 +61,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
     id: 'cow',
     label: 'Cow',
+    shortLabel: 'C',
     countLabel: 'cows',
     badge: null,
     indicator: 'none',
@@ -70,6 +73,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
     id: 'bull',
     label: 'Bull',
+    shortLabel: 'B',
     countLabel: 'bulls',
     badge: 'B',
     indicator: 'ring',
@@ -81,6 +85,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
     id: 'spike',
     label: 'Spike',
+    shortLabel: 'S',
     countLabel: 'spikes',
     badge: 'S',
     indicator: 'diamond',
@@ -92,10 +97,11 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
     id: 'unclassified-antlerless',
     label: 'Unclassified antlerless',
+    shortLabel: 'A',
     countLabel: 'unclassified antlerless',
-    badge: 'UA',
+    badge: 'A',
     indicator: 'dashed-ring',
-    shortcut: 'n',
+    shortcut: 'a',
     description: 'Set new markers to unclassified antlerless (cow or calf) and update the current selection',
     color: '#C084FC',
     summaryKey: 'unclassifiedAntlerless',
@@ -103,6 +109,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
     id: 'unclassified',
     label: 'Unclassified',
+    shortLabel: 'U',
     countLabel: 'unclassified',
     badge: 'U',
     indicator: 'dashed-ring',

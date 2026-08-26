@@ -104,7 +104,7 @@ function drawCategoryBadge(
   if (!label) return
 
   // Badge sits to the upper right of the marker; the left edge stays fixed and the box grows
-  // to fit longer labels such as "UA".
+  // to fit labels wider than one character.
   const badgeLeft = x + 5
   const badgeY = y - 10
   const badgeHeight = 10
