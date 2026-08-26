@@ -20,3 +20,43 @@ export function annotationsStorageKey(filename: string, basePath: string): strin
 export function legacyAnnotationsStorageKey(filename: string): string {
   return `${LS_ANNOTATION_PREFIX}${filename}`
 }
+
+/**
+ * Where an unreadable annotations payload is set aside. A release that cannot parse what an earlier
+ * one saved must never be the reason that work disappears: the original text is copied here before
+ * anything can overwrite it, so it stays recoverable by hand or by a later build.
+ */
+export function unreadableAnnotationsKey(filename: string, basePath: string): string {
+  return `${annotationsStorageKey(filename, basePath)}:unreadable`
+}
+
+/**
+ * localStorage throws when the browser is out of quota, and can throw on any access at all when a
+ * privacy mode blocks storage. A throw from one of these calls unwinds through a React effect and
+ * takes the whole app down — including the reviewer's chance to export the work still in memory —
+ * so every access the app makes goes through these wrappers and reports failure instead.
+ */
+export function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+export function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function safeRemoveItem(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Nothing to do: the value is either already gone or unreachable.
+  }
+}

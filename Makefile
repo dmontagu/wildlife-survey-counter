@@ -80,6 +80,19 @@ typecheck-ts:
 .PHONY: typecheck
 typecheck: typecheck-py typecheck-ts
 
+# Scope the run with ARGS, e.g. `make test-ts ARGS=storage` or `make test-ts ARGS='-t "undo"'`.
+.PHONY: test-ts
+test-ts:
+	@echo "Run frontend tests"
+	cd src/frontend && npx vitest run $(ARGS)
+
+.PHONY: test-ts-watch
+test-ts-watch:
+	cd src/frontend && npx vitest $(ARGS)
+
+.PHONY: test
+test: test-ts
+
 .PHONY: clean
 clean:
 	rm -rf src/frontend/dist src/frontend/node_modules/.vite

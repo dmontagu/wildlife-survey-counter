@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { execSync } from 'node:child_process'
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
@@ -39,6 +40,20 @@ export default defineConfig({
       '/api': backendUrl,
       '/samples': backendUrl,
       '/uploads': backendUrl,
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: false,
+    setupFiles: './src/tests/setup.ts',
+    include: ['src/**/*.test.{ts,tsx}'],
+    // Every file gets a fresh module registry and a fresh jsdom document (Vitest's default).
+    // The suite is small enough that the speedup from sharing them is not worth the risk of
+    // one test's localStorage or IndexedDB state leaking into the next.
+    restoreMocks: true,
+    env: {
+      // The sample gallery is dev-only and fetches /api/images; there is no backend under test.
+      VITE_SHOW_SAMPLE_IMAGES: 'false',
     },
   },
 })

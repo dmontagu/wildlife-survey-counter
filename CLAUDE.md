@@ -66,6 +66,8 @@ See `src/frontend/CLAUDE.md` for detailed frontend architecture. Key points:
 - State via React Context + useReducer with undo/redo patches
 - Modifier-key-driven interaction (no tool modes)
 - localStorage persistence for annotations, recent images, and UI preferences (prefix: `wsc:`); opened image files are stored as blobs in IndexedDB (`wsc-browser-images`), so the app works with no backend at all
+- Tests: Vitest + Testing Library (`make test-ts`), with the heaviest coverage on localStorage/IndexedDB
+  persistence and upgrades from previously shipped storage shapes — see `src/frontend/CLAUDE.md`
 - Build-time flags: `VITE_SHOW_SAMPLE_IMAGES` (`src/frontend/src/config.ts` — set to `false` to hide the dev sample list, which is dev-only regardless), plus `VITE_BACKEND_URL`, `VITE_BASE_PATH`, and `VITE_APP_COMMIT_HASH` in `vite.config.ts`
 
 ## Dependencies
