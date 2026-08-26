@@ -24,8 +24,7 @@ export default function StatusBar({
     return (
       <div className="border-t border-border bg-card/70 px-3 py-2 text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <span>Ready to label a new image.</span>
-          <span>Recent work is saved in this browser.</span>
+          <span>Work is saved in this browser only.</span>
         </div>
       </div>
     )
@@ -57,7 +56,7 @@ export default function StatusBar({
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <div className="flex items-center">
-            <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-lg px-2.5 text-xs">
+            <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-md px-2.5 text-xs">
               <DownloadIcon className="size-3.5" />
               Export Results
             </Button>
@@ -65,7 +64,7 @@ export default function StatusBar({
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
-                  className="h-7 rounded-l-none rounded-r-lg border-l border-white/15 px-2 text-xs shadow-none hover:bg-primary/90"
+                  className="h-7 rounded-l-none rounded-r-md border-l border-primary-foreground/20 px-2 text-xs shadow-none hover:bg-primary/90"
                   aria-label="More export options"
                 >
                   <ChevronDownIcon className="size-3.5" />

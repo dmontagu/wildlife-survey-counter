@@ -31,6 +31,10 @@ const SHARED_GROUPS = [
   {
     title: 'Classification',
     items: [
+      [
+        'Class buttons',
+        'With nothing selected, choose the class for new markers. With markers selected, apply the class to them, which also confirms them',
+      ],
       ['E', 'Cycle the selected marker label, or set the class for the next new marker when nothing is selected'],
       ...ELK_CATEGORY_OPTIONS.map(
         (option) => [option.shortcut.toUpperCase(), `Set the class to ${option.label.toLowerCase()}`] as const,
@@ -85,23 +89,20 @@ export default function HelpOverlay() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 overflow-y-auto pr-1 md:grid-cols-2">
+        <div className="grid gap-x-8 gap-y-6 overflow-y-auto pr-1 md:grid-cols-2">
           {groups.map((group) => (
-            <section key={group.title} className="space-y-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {group.title}
-              </h3>
-              <div className="space-y-2">
+            <section key={group.title} className="space-y-2">
+              <h3 className="text-xs font-semibold text-foreground">{group.title}</h3>
+              <dl className="divide-y divide-border border-y border-border">
                 {group.items.map(([shortcut, description]) => (
-                  <div
-                    key={`${group.title}-${shortcut}`}
-                    className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/45 px-3 py-2"
-                  >
-                    <ShortcutSequence shortcut={shortcut} compact />
-                    <span className="text-sm leading-5 text-muted-foreground">{description}</span>
+                  <div key={`${group.title}-${shortcut}`} className="flex flex-col gap-1 py-2">
+                    <dt>
+                      <ShortcutSequence shortcut={shortcut} compact />
+                    </dt>
+                    <dd className="text-sm leading-5 text-muted-foreground">{description}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </section>
           ))}
         </div>

@@ -22,6 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
+import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 interface ToolbarProps {
@@ -105,7 +106,7 @@ export default function Toolbar({
               type="button"
               onClick={hasImage ? onGoHome : undefined}
               className={[
-                'inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
+                'inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground',
                 hasImage ? 'cursor-pointer transition-colors hover:text-foreground' : 'cursor-default',
               ].join(' ')}
               aria-label={hasImage ? 'Go to home page' : undefined}
@@ -356,13 +357,13 @@ function WorkspaceMenu({
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleRenameSubmit}>
-            <label className="flex flex-col gap-2 text-sm">
+            <label htmlFor="rename-image-name" className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-foreground">Display name</span>
-              <input
+              <Input
+                id="rename-image-name"
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
                 placeholder={currentFilename || 'Survey image'}
-                className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </label>
             <DialogFooter>
