@@ -61,3 +61,51 @@ jobs:
       - name: Build frontend
         working-directory: src/frontend
         run: npm run build
+
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: wildlife-survey-counter:ci
+          build-args: WITH_ML=false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        run: |
+          docker run -d --name wsc-ci -p 8100:8100 wildlife-survey-counter:ci
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8100/api/health; then
+              echo "image is serving /api/health"
+              if curl -sf http://localhost:8100/ | grep -q '<div id="root"'; then
+                echo "image is serving the frontend"
+                exit 0
+              fi
+              echo "GET / did not return the built frontend"
+              docker logs wsc-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "server did not become healthy"
+          docker logs wsc-ci
+          exit 1
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f wsc-ci || true
+
+      # The full ML image is multi-GB and is not built here; this validates the apt layer it
+      # depends on (the part that broke in #2) without pulling any Python wheels.
+      - name: Validate ML system-libs stage
+        run: docker build --build-arg WITH_ML=true --target ml-system-libs -t wsc-ml-system-libs:ci .

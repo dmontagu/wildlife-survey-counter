@@ -69,9 +69,17 @@ See `src/frontend/CLAUDE.md` for detailed frontend architecture. Key points:
 ## Docker & Deployment
 
 - Multi-stage Dockerfile: Node build → Python slim runtime
-- Only needs `libglib2.0-0` (not libgl1) for opencv-python-headless
-- Health check at `GET /api/health`
-- `make docker-build` / `make docker-run`
+- Default build is headless: base deps only, so it only needs `libglib2.0-0` for opencv-python-headless
+- `ARG WITH_ML` (default `false`) gates the optional agent sandbox: `WITH_ML=true` adds the `[ml]`
+  extra, the GL/X11 libs full `opencv-python` links against (`libgl1` — *not* `libgl1-mesa-glx`,
+  which no longer exists on Debian 13), and pre-downloaded yolov8x + OWLv2 weights. That image is
+  several GB.
+- The project is not pip-installed in the image: `uv sync --no-install-project` plus
+  `ENV PYTHONPATH=/app/src`, and every `uv run` passes `--no-sync` (otherwise uv re-syncs and tries
+  to build the project, which needs files the image doesn't carry)
+- `HEALTHCHECK` in the image hits `GET /api/health` via python urllib (no curl in slim)
+- `make docker-build` / `make docker-run`, or `make docker-build WITH_ML=true`
+- CI builds the default image and smoke-tests `/api/health` on every PR
 
 ## Docker Development
 

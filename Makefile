@@ -59,8 +59,13 @@ lint-ts:
 	@echo "Run biome lint"
 	npx --prefix src/frontend biome lint src/frontend/
 
+.PHONY: check-ts
+check-ts:
+	@echo "Run biome check (format + lint + imports, same as CI)"
+	npx --prefix src/frontend biome check src/frontend/
+
 .PHONY: lint
-lint: lint-py lint-ts
+lint: lint-py check-ts
 
 .PHONY: typecheck-py
 typecheck-py:
@@ -81,10 +86,16 @@ clean:
 
 # --- Production Docker ---
 
+# Set WITH_ML=true to also install the [ml] extra (torch, transformers,
+# ultralytics) and pre-download model weights for the agent sandbox.
+WITH_ML ?= false
+
 .PHONY: docker-build
 docker-build:
-	@echo "Building Docker image"
-	docker build -t wildlife-survey-counter .
+	@if [ "$(WITH_ML)" != "true" ] && [ "$(WITH_ML)" != "false" ]; then \
+		echo "WITH_ML must be 'true' or 'false' (got '$(WITH_ML)')"; exit 1; fi
+	@echo "Building Docker image (WITH_ML=$(WITH_ML))"
+	docker build --build-arg WITH_ML=$(WITH_ML) -t wildlife-survey-counter .
 
 .PHONY: docker-run
 docker-run: docker-build
