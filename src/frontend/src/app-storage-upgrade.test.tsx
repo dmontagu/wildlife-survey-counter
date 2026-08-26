@@ -52,7 +52,7 @@ describe('storage written before annotations were keyed by image source', () => 
     renderApp(ROUTE)
 
     await waitFor(() => expect(totalCounted()).toBe('2'))
-    expect(statusCount('Bull')).toBe('1')
+    expect(statusCount('Bull?')).toBe('1')
   })
 
   it('moves the list to the per-image key without changing what it contains', async () => {
@@ -177,9 +177,14 @@ describe('annotations written before the current set of classes existed', () => 
     renderApp(ROUTE)
 
     await waitFor(() => expect(totalCounted()).toBe('5'))
-    for (const label of ['Cow', 'Bull', 'Spike', 'Antlerless', 'Unclassified']) {
+    // The five ids a pre-seven-class build wrote. 'bull' and 'unclassified' were relabelled rather than
+    // renamed, so they still land in their own chips instead of falling back to cow.
+    for (const label of ['Cow', 'Bull?', 'Spike', 'Antlerless?', 'Unclassified']) {
       expect(statusCount(label)).toBe('1')
     }
+    // Classes this build added are simply absent from that work, not miscounted.
+    expect(statusCount('Calf')).toBe('0')
+    expect(statusCount('Brow-tined')).toBe('0')
   })
 
   it('keeps an annotation whose class this build does not recognise', async () => {
@@ -187,7 +192,7 @@ describe('annotations written before the current set of classes existed', () => 
     localStorage.setItem(
       CURRENT_KEY,
       JSON.stringify([
-        { id: 1, x: 10, y: 10, category: 'calf', label: 'calf elk', state: 'confirmed' },
+        { id: 1, x: 10, y: 10, category: 'moose', label: 'moose', state: 'confirmed' },
         { id: 2, x: 20, y: 20, category: 'cow', label: 'elk', state: 'confirmed' },
       ]),
     )
@@ -244,10 +249,14 @@ describe('recent work written by an earlier build', () => {
     renderApp('/')
 
     expect(await screen.findByText('old-survey.jpg')).toBeInTheDocument()
-    expect(screen.getByText(/2 bulls/)).toBeInTheDocument()
+    expect(screen.getByText(/2 unclassified bulls/)).toBeInTheDocument()
+    // A record saved before a class existed simply lacks its field, which has to read as zero rather
+    // than as a hole that drops the record.
     expect(readRecentImages()[0]).toMatchObject({
       filename: 'old-survey.jpg',
       lastEditedAt: '2025-03-01T00:00:00.000Z',
+      calves: 0,
+      browTinedBulls: 0,
       spikes: 0,
       unclassified: 0,
       unclassifiedAntlerless: 0,

@@ -31,7 +31,7 @@ scripts/              One-off evaluation and batch-annotation scripts (YOLO, SAH
 
 1. **Open** an aerial photo — drag it into the window or use **Open image**. The image is kept in IndexedDB and its annotations in localStorage, both local to your browser.
 2. **Mark** each animal — click empty canvas to drop a point marker.
-3. **Classify** — Cow, Bull, Spike, Unclassified antlerless, or Unclassified, from the on-image palette or the keys `C` / `B` / `S` / `A` / `U` (or `E` to cycle through them). `Enter` confirms the selection, `Shift+Enter` marks it unconfirmed, and Backspace deletes it.
+3. **Classify** — Cow, Calf, Unclassified antlerless, Spike bull, Brow-tined bull, Unclassified bull, or Unclassified elk, from the on-image palette or each class's letter (`E` cycles through them; `?` opens the full shortcut reference). `Enter` confirms the selection, `Shift+Enter` marks it unconfirmed, and Backspace deletes it.
 4. **Export** — **Export Results** downloads a review JPG and an annotations JSON together.
 
 The UI supports deep zoom, keyboard-driven workflows, undo/redo, and bulk selection (box select, `Cmd/Ctrl+A`, and `Shift+Cmd/Ctrl+drag` to select and confirm in one gesture).

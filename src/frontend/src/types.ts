@@ -1,7 +1,21 @@
 export type AnnotationState = 'auto-detected' | 'confirmed' | 'rejected' | 'manually-added'
-export type AnnotationCategory = 'cow' | 'bull' | 'spike' | 'unclassified-antlerless' | 'unclassified'
+export type AnnotationCategory =
+  | 'cow'
+  | 'calf'
+  | 'unclassified-antlerless'
+  | 'spike'
+  | 'brow-tined'
+  | 'bull'
+  | 'unclassified'
 /** Per-class count fields shared by AnnotationSummary and RecentImageRecord (see ELK_CATEGORY_OPTIONS). */
-export type CategorySummaryKey = 'cows' | 'bulls' | 'spikes' | 'unclassifiedAntlerless' | 'unclassified'
+export type CategorySummaryKey =
+  | 'cows'
+  | 'calves'
+  | 'unclassifiedAntlerless'
+  | 'spikes'
+  | 'browTinedBulls'
+  | 'bulls'
+  | 'unclassified'
 export type AnnotationReviewStatus = 'confirmed' | 'unconfirmed'
 export type MarkerVisibilityMode = 'visible' | 'dimmed' | 'hidden'
 

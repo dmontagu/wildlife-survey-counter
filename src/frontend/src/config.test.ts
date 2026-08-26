@@ -6,6 +6,7 @@ import {
   isAnnotationCategory,
   nextCategory,
   previousCategory,
+  reservedBareKeys,
 } from './config'
 
 /**
@@ -14,8 +15,16 @@ import {
  * load and silently falls back to the default class, so removing or renaming one is a data
  * migration, not a refactor. Adding a class is fine and only needs the new id listed here.
  */
-const SHIPPED_CATEGORY_IDS = ['cow', 'bull', 'spike', 'unclassified-antlerless', 'unclassified']
-const SHIPPED_SUMMARY_KEYS = ['cows', 'bulls', 'spikes', 'unclassifiedAntlerless', 'unclassified']
+const SHIPPED_CATEGORY_IDS = ['cow', 'calf', 'bull', 'brow-tined', 'spike', 'unclassified-antlerless', 'unclassified']
+const SHIPPED_SUMMARY_KEYS = [
+  'cows',
+  'calves',
+  'bulls',
+  'browTinedBulls',
+  'spikes',
+  'unclassifiedAntlerless',
+  'unclassified',
+]
 
 describe('elk classes', () => {
   it('still recognises every class id that shipped builds have written to storage', () => {
@@ -49,8 +58,18 @@ describe('elk classes', () => {
   })
 
   it('rejects values that are not class ids', () => {
-    for (const value of [null, undefined, '', 'Cow', 'calf', 42, {}]) {
+    for (const value of [null, undefined, '', 'Cow', 'moose', 42, {}]) {
       expect(isAnnotationCategory(value)).toBe(false)
+    }
+  })
+
+  it('keeps class letters out of the keys KEYS already claims', () => {
+    // useKeyboard.ts matches every KEYS binding before the class loop, so a class letter drawn from
+    // that set would never fire. Failing here is cheaper than shipping a shortcut that does nothing.
+    const reserved = reservedBareKeys()
+    for (const option of ELK_CATEGORY_OPTIONS) {
+      if (!option.shortcut) continue
+      expect(reserved.has(option.shortcut.toLowerCase())).toBe(false)
     }
   })
 

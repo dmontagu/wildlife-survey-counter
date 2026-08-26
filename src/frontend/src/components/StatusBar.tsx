@@ -45,6 +45,7 @@ export default function StatusBar({
               color={option.color}
               label={option.statusLabel ?? option.label}
               value={summary[option.summaryKey]}
+              compact
             />
           ))}
           <span className="whitespace-nowrap text-muted-foreground tabular-nums">
@@ -87,9 +88,26 @@ export default function StatusBar({
   )
 }
 
-function StatusChip({ badge, color, label, value }: { badge?: string; color: string; label: string; value: number }) {
+/**
+ * `compact` holds the word label back to `xl`. Seven class chips plus the totals and the export button
+ * overflow a laptop-width bar, and the badge plus the count is the part worth keeping; the title carries
+ * the name while the label is hidden.
+ */
+function StatusChip({
+  badge,
+  color,
+  label,
+  value,
+  compact = false,
+}: {
+  badge?: string
+  color: string
+  label: string
+  value: number
+  compact?: boolean
+}) {
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2" title={label}>
       {badge ? (
         <span
           className="inline-flex h-4 min-w-4 items-center justify-center rounded border px-1 text-[10px] font-semibold leading-none"
@@ -100,7 +118,11 @@ function StatusChip({ badge, color, label, value }: { badge?: string; color: str
       ) : (
         <span className="size-2 rounded-full" style={{ backgroundColor: color }} />
       )}
-      <span className="hidden whitespace-nowrap text-muted-foreground sm:inline">{label}</span>
+      <span
+        className={['hidden whitespace-nowrap text-muted-foreground', compact ? 'xl:inline' : 'sm:inline'].join(' ')}
+      >
+        {label}
+      </span>
       <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </div>
   )
