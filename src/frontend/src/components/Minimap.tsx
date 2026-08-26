@@ -58,7 +58,8 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
   const imgW = state.image?.width ?? 1
   const imgH = state.image?.height ?? 1
   const aspect = imgH / imgW
-  const minimapH = Math.round(MINIMAP_WIDTH * aspect)
+  // Never let the height reach 0: drawImage() throws for a zero-height canvas source (extreme panoramas).
+  const minimapH = Math.max(1, Math.round(MINIMAP_WIDTH * aspect))
 
   useEffect(() => {
     const canvas = canvasRef.current
