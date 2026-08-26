@@ -3,8 +3,15 @@
 // The alternative — decoding to a canvas and re-encoding — throws metadata away as a side effect of
 // re-compressing the pixels. That is lossy, slow on large files, discards the ICC colour profile, and
 // hits browser canvas limits (Safari caps out around 16.7 MP). These parsers instead rewrite the
-// container: the compressed image data is copied through untouched, and only the segments/chunks that
-// can carry personal data (GPS, camera serials, timestamps, captions) are omitted.
+// container: the compressed image data and the tables needed to decode it are copied through
+// untouched, while the parts that can carry a payload — JPEG APPn/COM segments, PNG ancillary
+// chunks — are judged against a keep-list, so anything we have never heard of is dropped rather
+// than passed on unexamined.
+//
+// Both parsers also stop at the end of the primary image — JPEG EOI, PNG IEND — and discard whatever
+// follows it. Cameras and phones append entire second files there: a CIPA MPF image (with its own
+// EXIF and GPS) or an Android Motion Photo MP4 of the scene. Those are not part of the picture the
+// user opened and must not survive stripping.
 //
 // Every parser throws on anything it does not fully understand, so callers can fall back to the
 // canvas path rather than emitting a file that a decoder might reject.
@@ -21,14 +28,38 @@ const MARKER_SOS = 0xda
 const MARKER_APP0 = 0xe0
 const MARKER_APP1 = 0xe1
 const MARKER_APP2 = 0xe2
+const MARKER_APP14 = 0xee
 const MARKER_APP15 = 0xef
 const MARKER_COM = 0xfe
 
 const EXIF_ORIENTATION_TAG = 0x0112
 
-/** PNG chunks that can carry EXIF, captions, or timestamps. Everything else — including `iCCP`,
- * `sRGB`, `gAMA` and `cHRM` — is preserved so colour rendering is unchanged. */
-const PNG_METADATA_CHUNKS = new Set(['eXIf', 'tEXt', 'zTXt', 'iTXt', 'tIME'])
+/**
+ * PNG chunks we keep: the critical ones, everything that affects how the pixels are decoded or
+ * coloured, and the APNG animation chunks. Anything else is dropped — `eXIf`, `tEXt`/`zTXt`/`iTXt`
+ * and `tIME` obviously, but also private chunks like Fireworks' `prVW` (an embedded preview image)
+ * or ImageMagick's `mkBF`. A keep-list is the right polarity here: a chunk type nobody has invented
+ * yet defaults to "drop" rather than riding along unexamined.
+ */
+const PNG_KEPT_CHUNKS = new Set([
+  'IHDR',
+  'PLTE',
+  'IDAT',
+  'IEND',
+  'tRNS',
+  'gAMA',
+  'cHRM',
+  'sRGB',
+  'iCCP',
+  'sBIT',
+  'bKGD',
+  'pHYs',
+  'hIST',
+  'sPLT',
+  'acTL',
+  'fcTL',
+  'fdAT',
+])
 
 function viewOf(bytes: Uint8Array): DataView {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -89,14 +120,57 @@ function readExifOrientation(bytes: Uint8Array, start: number, end: number): num
 }
 
 function isDroppableJpegSegment(marker: number, bytes: Uint8Array, payloadStart: number): boolean {
-  // APP0 is JFIF (density/thumbnail housekeeping, no personal data) and some decoders expect it.
-  if (marker === MARKER_APP0) return false
-  // APP2 carries the ICC colour profile in multi-part chunks; keeping it means colours survive.
-  if (marker === MARKER_APP2 && matchesAscii(bytes, payloadStart, 'ICC_PROFILE\0')) return false
-  // Everything else in APP1..APP15 is EXIF, XMP, Photoshop/IPTC, MPF, Ducky, and friends.
-  if (marker >= MARKER_APP1 && marker <= MARKER_APP15) return true
+  // APPn segments are a keep-list: the only three that survive carry no personal data but do change
+  // how the image decodes. Each is gated on its identifier string, because the marker number alone
+  // says nothing about the payload — a JFXX APP0, for instance, is an embedded thumbnail image.
+  if (marker >= MARKER_APP0 && marker <= MARKER_APP15) {
+    // JFIF: pixel density and housekeeping; some decoders expect it.
+    if (marker === MARKER_APP0 && matchesAscii(bytes, payloadStart, 'JFIF\0')) return false
+    // ICC colour profile, split across multi-part chunks; keeping it means colours survive.
+    if (marker === MARKER_APP2 && matchesAscii(bytes, payloadStart, 'ICC_PROFILE\0')) return false
+    // Adobe: a version, two flag words and a colour-transform byte. libjpeg consults that byte to
+    // resolve the colour space (always for CMYK/YCCK, and for RGB/YCbCr when there is no JFIF APP0),
+    // so dropping it can silently change the decoded colours.
+    if (marker === MARKER_APP14 && matchesAscii(bytes, payloadStart, 'Adobe')) return false
+    // Everything else is EXIF, XMP, Photoshop/IPTC, MPF, FlashPix, Ducky, and friends.
+    return true
+  }
   // Free-text comments.
   return marker === MARKER_COM
+}
+
+/**
+ * Find where an entropy-coded scan ends, given the offset of its first byte.
+ *
+ * Inside a scan a `0xFF` byte is either stuffed (`FF 00`, an escaped data byte), a fill byte
+ * (`FF FF`), or a restart marker (`FF D0`–`FF D7`) that punctuates the scan itself. Anything else is
+ * the next real marker, and the scan ends immediately before it. Returns the offset of that marker's
+ * leading `0xFF`.
+ */
+function findScanEnd(bytes: Uint8Array, start: number): number {
+  let offset = start
+  while (offset < bytes.length) {
+    const flag = bytes.indexOf(0xff, offset)
+    if (flag < 0) break
+
+    const next = bytes[flag + 1]
+    if (next === undefined) throw new Error('Malformed JPEG: truncated scan data')
+    if (next === 0x00) {
+      offset = flag + 2
+      continue
+    }
+    // A run of fill bytes may pad the gap before a marker; step over one and re-read.
+    if (next === 0xff) {
+      offset = flag + 1
+      continue
+    }
+    if (next >= MARKER_RST_FIRST && next <= MARKER_RST_LAST) {
+      offset = flag + 2
+      continue
+    }
+    return flag
+  }
+  throw new Error('Malformed JPEG: scan data runs past end of file')
 }
 
 export interface JpegStripResult {
@@ -109,9 +183,11 @@ export interface JpegStripResult {
 /**
  * Rewrite a JPEG marker stream without its metadata segments.
  *
- * Walks SOI, then `FF <marker>` segments with a big-endian 2-byte length, until SOS — from which
- * point the entropy-coded scan (and anything after it) is copied verbatim. Throws on a truncated or
- * malformed stream.
+ * Walks SOI, then `FF <marker>` segments with a big-endian 2-byte length. At each SOS the header is
+ * kept and the entropy-coded scan that follows is copied through verbatim, but the walk resumes at
+ * the marker after it — a progressive JPEG has several scans, and APPn/COM segments can sit between
+ * them. Parsing ends at the primary image's EOI; any trailer after that (an appended MPF image, a
+ * Motion Photo MP4) is discarded. Throws on a truncated or malformed stream.
  */
 export function stripJpegMetadata(bytes: Uint8Array): JpegStripResult {
   if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== MARKER_SOI) {
@@ -141,9 +217,10 @@ export function stripJpegMetadata(bytes: Uint8Array): JpegStripResult {
       continue
     }
 
-    // From the scan (or a bare EOI) onwards the stream is compressed data we must not touch.
-    if (marker === MARKER_SOS || marker === MARKER_EOI) {
-      parts.push(bytes.subarray(offset))
+    // EOI closes the primary image. Everything past it belongs to some other payload, so stop here
+    // and let it fall off the end of the rewritten file.
+    if (marker === MARKER_EOI) {
+      parts.push(bytes.subarray(offset, afterMarker))
       return { parts, orientation }
     }
 
@@ -158,17 +235,27 @@ export function stripJpegMetadata(bytes: Uint8Array): JpegStripResult {
       orientation = readExifOrientation(bytes, payloadStart, segmentEnd) ?? orientation
     }
 
+    // The SOS header is followed by compressed data we must not touch; keep both, then pick the walk
+    // back up at whatever marker ends the scan.
+    if (marker === MARKER_SOS) {
+      const scanEnd = findScanEnd(bytes, segmentEnd)
+      parts.push(bytes.subarray(offset, scanEnd))
+      offset = scanEnd
+      continue
+    }
+
     if (!isDroppableJpegSegment(marker, bytes, payloadStart)) {
       parts.push(bytes.subarray(offset, segmentEnd))
     }
     offset = segmentEnd
   }
 
-  throw new Error('Malformed JPEG: no scan data found')
+  throw new Error('Malformed JPEG: no EOI marker found')
 }
 
 /**
- * Rewrite a PNG chunk stream without its metadata chunks. Throws on a truncated or malformed file.
+ * Rewrite a PNG chunk stream, keeping only the chunks on `PNG_KEPT_CHUNKS` and stopping at IEND so
+ * trailing data is discarded. Throws on a truncated or malformed file.
  */
 export function stripPngMetadata(bytes: Uint8Array): Uint8Array[] {
   if (!looksLikePng(bytes)) throw new Error('Not a PNG: bad signature')
@@ -191,7 +278,7 @@ export function stripPngMetadata(bytes: Uint8Array): Uint8Array[] {
       seenHeader = true
     }
 
-    if (!PNG_METADATA_CHUNKS.has(type)) parts.push(bytes.subarray(offset, chunkEnd))
+    if (PNG_KEPT_CHUNKS.has(type)) parts.push(bytes.subarray(offset, chunkEnd))
     offset = chunkEnd
 
     // Anything trailing IEND is not part of the image.
