@@ -59,6 +59,14 @@ Desktop.ini
 # Raw data
 data/
 
+# Model weights (downloaded / trained, not source)
+*.pt
+*.pth
+*.onnx
+
+# Ultralytics training output (checkpoints, plots, per-run metrics)
+runs/
+
 # Private planning / internal docs
 plans/
 project/
