@@ -491,6 +491,20 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [state.image, state.annotations, flushAnnotationSave])
 
+  // The 500ms debounce would drop a change made just before the tab is hidden or closed, so flush
+  // any pending save on visibilitychange=hidden and on pagehide.
+  useEffect(() => {
+    const flushOnHide = () => {
+      if (document.visibilityState === 'hidden') flushAnnotationSave()
+    }
+    document.addEventListener('visibilitychange', flushOnHide)
+    window.addEventListener('pagehide', flushAnnotationSave)
+    return () => {
+      document.removeEventListener('visibilitychange', flushOnHide)
+      window.removeEventListener('pagehide', flushAnnotationSave)
+    }
+  }, [flushAnnotationSave])
+
   useEffect(() => {
     if (state.image === null) {
       pendingSaveRef.current = null
