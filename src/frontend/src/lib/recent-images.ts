@@ -1,7 +1,7 @@
 import { ELK_CATEGORY_OPTIONS } from '../config'
 import type { CategorySummaryKey, RecentImageRecord, RecentImagesSortMode } from '../types'
 import { displayNameFor } from './image-names'
-import { imageStorageId, LS_RECENT_IMAGES_KEY } from './storage'
+import { imageStorageId, LS_RECENT_IMAGES_KEY, safeGetItem, safeSetItem } from './storage'
 
 function compareByName(a: RecentImageRecord, b: RecentImageRecord): number {
   return displayNameFor(a).localeCompare(displayNameFor(b), undefined, {
@@ -58,7 +58,7 @@ function normalizeRecord(raw: unknown): RecentImageRecord | null {
 
 export function readRecentImages(): RecentImageRecord[] {
   try {
-    const stored = localStorage.getItem(LS_RECENT_IMAGES_KEY)
+    const stored = safeGetItem(LS_RECENT_IMAGES_KEY)
     if (!stored) return []
     const parsed = JSON.parse(stored)
     if (!Array.isArray(parsed)) return []
@@ -70,7 +70,7 @@ export function readRecentImages(): RecentImageRecord[] {
 
 export function writeRecentImages(images: RecentImageRecord[]): RecentImageRecord[] {
   const sorted = sortRecentImages(images)
-  localStorage.setItem(LS_RECENT_IMAGES_KEY, JSON.stringify(sorted))
+  safeSetItem(LS_RECENT_IMAGES_KEY, JSON.stringify(sorted))
   return sorted
 }
 

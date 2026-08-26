@@ -58,6 +58,10 @@ import {
   LS_RECENT_IMAGES_SORT_KEY,
   LS_ZOOM_SPEED_KEY,
   legacyAnnotationsStorageKey,
+  safeGetItem,
+  safeRemoveItem,
+  safeSetItem,
+  unreadableAnnotationsKey,
 } from './lib/storage'
 import { isMac, platformModifier } from './platform'
 import { AppStateContext, DispatchContext, initialState, reducer } from './state'
@@ -210,6 +214,7 @@ export default function App() {
   const [zoomLevel, setZoomLevel] = useState(1)
   const [canvasSize, setCanvasSize] = useState<[number, number]>([800, 600])
   const restoredRef = useRef(false)
+  const [preferencesRestored, setPreferencesRestored] = useState(false)
   const [recentImages, setRecentImages] = useState<RecentImageRecord[]>([])
   const [recentImagesSort, setRecentImagesSort] = useState<RecentImagesSortMode>('last-edited')
   const [sampleImages, setSampleImages] = useState<ServerImageRecord[]>([])
@@ -247,24 +252,28 @@ export default function App() {
   }, [vp])
 
   const restoreAnnotations = useCallback((filename: string, basePath: string) => {
-    let saved = localStorage.getItem(annotationsStorageKey(filename, basePath))
+    let saved = safeGetItem(annotationsStorageKey(filename, basePath))
 
     if (!saved) {
-      const legacy = localStorage.getItem(legacyAnnotationsStorageKey(filename))
+      const legacy = safeGetItem(legacyAnnotationsStorageKey(filename))
       if (legacy) {
         saved = legacy
-        localStorage.setItem(annotationsStorageKey(filename, basePath), legacy)
-        localStorage.removeItem(legacyAnnotationsStorageKey(filename))
+        // Only drop the old copy once the new one is definitely written. If the write fails the
+        // reviewer keeps the original and the migration simply retries on the next open.
+        if (safeSetItem(annotationsStorageKey(filename, basePath), legacy)) {
+          safeRemoveItem(legacyAnnotationsStorageKey(filename))
+        }
       }
     }
 
     if (!saved) {
-      const globalLegacy = localStorage.getItem('wsc:annotations')
-      const legacyFilename = localStorage.getItem(LS_IMAGE_KEY)
+      const globalLegacy = safeGetItem('wsc:annotations')
+      const legacyFilename = safeGetItem(LS_IMAGE_KEY)
       if (globalLegacy && legacyFilename === filename) {
         saved = globalLegacy
-        localStorage.setItem(annotationsStorageKey(filename, basePath), globalLegacy)
-        localStorage.removeItem('wsc:annotations')
+        if (safeSetItem(annotationsStorageKey(filename, basePath), globalLegacy)) {
+          safeRemoveItem('wsc:annotations')
+        }
       }
     }
 
@@ -273,7 +282,14 @@ export default function App() {
     try {
       dispatch({ type: 'LOAD_ANNOTATIONS', annotations: normalizeAnnotations(JSON.parse(saved)) })
     } catch {
-      setNotice('Saved annotations could not be restored for this image.')
+      // The stored text is not JSON this build can read. Set it aside before the autosave 500ms
+      // from now writes an empty list over it: a release that cannot parse what an earlier one
+      // saved must never be the reason a reviewer's work is destroyed.
+      const quarantineKey = unreadableAnnotationsKey(filename, basePath)
+      if (safeGetItem(quarantineKey) === null) safeSetItem(quarantineKey, saved)
+      setNotice(
+        'Saved annotations for this image could not be read. A copy has been kept in this browser, so nothing was deleted.',
+      )
     }
   }, [])
 
@@ -299,8 +315,9 @@ export default function App() {
             basePath,
           },
         })
-        restoreAnnotations(filename, basePath)
         setNotice(null)
+        // After clearing the previous notice, so a restore failure's warning survives the load.
+        restoreAnnotations(filename, basePath)
         if (historyMode !== 'none') {
           navigateToImage(basePath, filename, historyMode === 'replace')
         }
@@ -336,10 +353,11 @@ export default function App() {
             basePath,
           },
         })
+        setNotice(message ?? null)
+        // After the notice above, so a restore failure's warning survives the load.
         if (basePath) {
           restoreAnnotations(filename, basePath)
         }
-        setNotice(message ?? null)
         if (historyMode !== 'none' && basePath) {
           navigateToImage(basePath, filename, historyMode === 'replace')
         }
@@ -392,15 +410,15 @@ export default function App() {
     if (!pending) return
 
     if (!pending.basePath) {
-      localStorage.removeItem(LS_IMAGE_KEY)
-      localStorage.removeItem(LS_IMAGE_BASE_KEY)
-      localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+      safeRemoveItem(LS_IMAGE_KEY)
+      safeRemoveItem(LS_IMAGE_BASE_KEY)
+      safeRemoveItem(LS_IMAGE_DISPLAY_NAME_KEY)
       return
     }
 
     const storageKey = annotationsStorageKey(pending.filename, pending.basePath)
     const serializedAnnotations = JSON.stringify(pending.annotations)
-    const existingSavedAnnotations = localStorage.getItem(storageKey)
+    const existingSavedAnnotations = safeGetItem(storageKey)
     const existingRecord = readRecentImages().find(
       (record) => record.filename === pending.filename && record.basePath === pending.basePath,
     )
@@ -415,12 +433,12 @@ export default function App() {
       return
     }
 
-    localStorage.setItem(LS_IMAGE_KEY, pending.filename)
-    localStorage.setItem(LS_IMAGE_BASE_KEY, pending.basePath)
+    safeSetItem(LS_IMAGE_KEY, pending.filename)
+    safeSetItem(LS_IMAGE_BASE_KEY, pending.basePath)
     if (pending.displayName) {
-      localStorage.setItem(LS_IMAGE_DISPLAY_NAME_KEY, pending.displayName)
+      safeSetItem(LS_IMAGE_DISPLAY_NAME_KEY, pending.displayName)
     } else {
-      localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+      safeRemoveItem(LS_IMAGE_DISPLAY_NAME_KEY)
     }
 
     const metadataChanged =
@@ -431,7 +449,12 @@ export default function App() {
     const lastEditedAt =
       !existingRecord || annotationsChanged || metadataChanged ? new Date().toISOString() : existingRecord.lastEditedAt
 
-    localStorage.setItem(storageKey, serializedAnnotations)
+    if (!safeSetItem(storageKey, serializedAnnotations)) {
+      setNotice(
+        'Could not save your latest changes — this browser has no room left. Export this image to keep your work.',
+      )
+      return
+    }
 
     const summary = summarizeAnnotations(pending.annotations)
     // Per-class counts come from the category table, so a new class needs no edit here.
@@ -474,26 +497,35 @@ export default function App() {
     }
   }, [state.image])
 
+  // Every writer below is gated on `preferencesRestored`. They are declared before the effect that
+  // reads the saved preferences, so on mount they would otherwise each write the default value over
+  // the reviewer's saved one before it had been read back — losing all of it on every reload. Once
+  // the restore has run the flag flips, these re-run, and the restored values are written back.
   useEffect(() => {
-    localStorage.setItem(LS_ACTIVE_CATEGORY_KEY, state.activeCategory)
-  }, [state.activeCategory])
+    if (!preferencesRestored) return
+    safeSetItem(LS_ACTIVE_CATEGORY_KEY, state.activeCategory)
+  }, [preferencesRestored, state.activeCategory])
 
   useEffect(() => {
-    localStorage.setItem(LS_BBOX_CREATION_KEY, state.bboxCreationEnabled ? 'true' : 'false')
-  }, [state.bboxCreationEnabled])
+    if (!preferencesRestored) return
+    safeSetItem(LS_BBOX_CREATION_KEY, state.bboxCreationEnabled ? 'true' : 'false')
+  }, [preferencesRestored, state.bboxCreationEnabled])
 
   useEffect(() => {
-    localStorage.setItem(LS_MARKER_VISIBILITY_KEY, state.markerVisibility)
-  }, [state.markerVisibility])
+    if (!preferencesRestored) return
+    safeSetItem(LS_MARKER_VISIBILITY_KEY, state.markerVisibility)
+  }, [preferencesRestored, state.markerVisibility])
 
   useEffect(() => {
-    localStorage.setItem(LS_ZOOM_SPEED_KEY, String(state.zoomSpeed))
     vp.zoomSpeed.current = state.zoomSpeed
-  }, [state.zoomSpeed, vp])
+    if (!preferencesRestored) return
+    safeSetItem(LS_ZOOM_SPEED_KEY, String(state.zoomSpeed))
+  }, [preferencesRestored, state.zoomSpeed, vp])
 
   useEffect(() => {
-    localStorage.setItem(LS_RECENT_IMAGES_SORT_KEY, recentImagesSort)
-  }, [recentImagesSort])
+    if (!preferencesRestored) return
+    safeSetItem(LS_RECENT_IMAGES_SORT_KEY, recentImagesSort)
+  }, [preferencesRestored, recentImagesSort])
 
   useEffect(() => {
     if (restoredRef.current) return
@@ -501,7 +533,7 @@ export default function App() {
 
     setRecentImages(readRecentImages())
 
-    const savedRecentSort = localStorage.getItem(LS_RECENT_IMAGES_SORT_KEY)
+    const savedRecentSort = safeGetItem(LS_RECENT_IMAGES_SORT_KEY)
     if (savedRecentSort === 'last-edited' || savedRecentSort === 'alphabetical') {
       setRecentImagesSort(savedRecentSort)
     }
@@ -515,17 +547,17 @@ export default function App() {
         .catch(() => {})
     }
 
-    const savedCategory = localStorage.getItem(LS_ACTIVE_CATEGORY_KEY)
+    const savedCategory = safeGetItem(LS_ACTIVE_CATEGORY_KEY)
     if (isAnnotationCategory(savedCategory)) {
       dispatch({ type: 'SET_ACTIVE_CATEGORY', category: savedCategory })
     }
 
-    const savedBboxCreation = localStorage.getItem(LS_BBOX_CREATION_KEY)
+    const savedBboxCreation = safeGetItem(LS_BBOX_CREATION_KEY)
     if (savedBboxCreation === 'true') {
       dispatch({ type: 'TOGGLE_BBOX_CREATION' })
     }
 
-    const savedMarkerVisibility = localStorage.getItem(LS_MARKER_VISIBILITY_KEY)
+    const savedMarkerVisibility = safeGetItem(LS_MARKER_VISIBILITY_KEY)
     if (
       savedMarkerVisibility === 'visible' ||
       savedMarkerVisibility === 'dimmed' ||
@@ -534,7 +566,7 @@ export default function App() {
       dispatch({ type: 'SET_MARKER_VISIBILITY', visibility: savedMarkerVisibility })
     }
 
-    const savedZoomSpeed = localStorage.getItem(LS_ZOOM_SPEED_KEY)
+    const savedZoomSpeed = safeGetItem(LS_ZOOM_SPEED_KEY)
     if (savedZoomSpeed) {
       const speed = Number.parseFloat(savedZoomSpeed)
       if (Number.isFinite(speed) && speed >= 0.25 && speed <= 4) {
@@ -542,6 +574,9 @@ export default function App() {
         vp.zoomSpeed.current = speed
       }
     }
+
+    // Everything above has been read back, so the writers above may start persisting again.
+    setPreferencesRestored(true)
 
     const redirectedPath = new URLSearchParams(window.location.search).get('p')
     if (redirectedPath) {
@@ -769,9 +804,9 @@ export default function App() {
 
   const handleGoHome = useCallback(() => {
     flushAnnotationSave()
-    localStorage.removeItem(LS_IMAGE_KEY)
-    localStorage.removeItem(LS_IMAGE_BASE_KEY)
-    localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+    safeRemoveItem(LS_IMAGE_KEY)
+    safeRemoveItem(LS_IMAGE_BASE_KEY)
+    safeRemoveItem(LS_IMAGE_DISPLAY_NAME_KEY)
     setNotice(null)
     dispatch({ type: 'RESET_WORKSPACE' })
     navigateHome()
@@ -816,7 +851,7 @@ export default function App() {
   const handleExportAllJson = useCallback(() => {
     try {
       const images = sortedRecentImages.flatMap((record) => {
-        const saved = localStorage.getItem(annotationsStorageKey(record.filename, record.basePath))
+        const saved = safeGetItem(annotationsStorageKey(record.filename, record.basePath))
         if (!saved) return []
 
         return [
@@ -843,7 +878,7 @@ export default function App() {
 
   const handleExportRecent = useCallback(async (record: RecentImageRecord) => {
     try {
-      const saved = localStorage.getItem(annotationsStorageKey(record.filename, record.basePath))
+      const saved = safeGetItem(annotationsStorageKey(record.filename, record.basePath))
       if (!saved) {
         setNotice(`No saved annotations were found for ${displayNameFor(record)}.`)
         return
@@ -882,14 +917,14 @@ export default function App() {
   }, [])
 
   const handleDeleteRecent = useCallback(async (record: RecentImageRecord) => {
-    localStorage.removeItem(annotationsStorageKey(record.filename, record.basePath))
+    safeRemoveItem(annotationsStorageKey(record.filename, record.basePath))
 
-    const savedFilename = localStorage.getItem(LS_IMAGE_KEY)
-    const savedBasePath = localStorage.getItem(LS_IMAGE_BASE_KEY)
+    const savedFilename = safeGetItem(LS_IMAGE_KEY)
+    const savedBasePath = safeGetItem(LS_IMAGE_BASE_KEY)
     if (savedFilename === record.filename && savedBasePath === record.basePath) {
-      localStorage.removeItem(LS_IMAGE_KEY)
-      localStorage.removeItem(LS_IMAGE_BASE_KEY)
-      localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+      safeRemoveItem(LS_IMAGE_KEY)
+      safeRemoveItem(LS_IMAGE_BASE_KEY)
+      safeRemoveItem(LS_IMAGE_DISPLAY_NAME_KEY)
     }
 
     if (isBrowserImageBasePath(record.basePath)) {
@@ -917,9 +952,9 @@ export default function App() {
       if (state.image?.filename === record.filename && state.image.basePath === record.basePath) {
         dispatch({ type: 'RENAME_IMAGE', displayName })
         if (displayName) {
-          localStorage.setItem(LS_IMAGE_DISPLAY_NAME_KEY, displayName)
+          safeSetItem(LS_IMAGE_DISPLAY_NAME_KEY, displayName)
         } else {
-          localStorage.removeItem(LS_IMAGE_DISPLAY_NAME_KEY)
+          safeRemoveItem(LS_IMAGE_DISPLAY_NAME_KEY)
         }
       }
     },
