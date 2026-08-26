@@ -70,6 +70,22 @@ export function normalizeAnnotations(raw: unknown): Annotation[] {
   return raw.map((annotation, index) => normalizeAnnotation(annotation, index))
 }
 
+/**
+ * True when a stored annotations payload represents the same annotations as `serialized` (the freshly
+ * serialised in-memory state). Older payloads differ textually while meaning the same thing — `category: null`
+ * upgrades to `"cow"`, missing fields pick up defaults — so they are compared after normalisation.
+ * Re-persisting such a payload is a migration, not a user edit, and must not count as one.
+ */
+export function storedAnnotationsMatch(stored: string | null, serialized: string): boolean {
+  if (stored === null) return false
+  if (stored === serialized) return true
+  try {
+    return JSON.stringify(normalizeAnnotations(JSON.parse(stored))) === serialized
+  } catch {
+    return false
+  }
+}
+
 export function prepareImportedAnnotations(raw: unknown): Annotation[] {
   return normalizeAnnotations(raw).map((annotation) =>
     isIgnoredAnnotation(annotation) ? annotation : { ...annotation, reviewStatus: 'unconfirmed' },

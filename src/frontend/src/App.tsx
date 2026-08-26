@@ -19,9 +19,14 @@ import {
   DialogTitle,
 } from './components/ui/dialog'
 import WelcomeScreen from './components/WelcomeScreen'
-import { isAnnotationCategory, SHOW_DEV_SAMPLES } from './config'
+import { ELK_CATEGORY_OPTIONS, isAnnotationCategory, SHOW_DEV_SAMPLES } from './config'
 import { useViewport } from './hooks/useViewport'
-import { normalizeAnnotations, prepareImportedAnnotations, summarizeAnnotations } from './lib/annotations'
+import {
+  normalizeAnnotations,
+  prepareImportedAnnotations,
+  storedAnnotationsMatch,
+  summarizeAnnotations,
+} from './lib/annotations'
 import {
   browserImageBasePath,
   browserImageIdFromBasePath,
@@ -56,7 +61,13 @@ import {
 } from './lib/storage'
 import { platformModifier } from './platform'
 import { AppStateContext, DispatchContext, initialState, reducer } from './state'
-import type { Annotation, RecentImageRecord, RecentImagesSortMode, ServerImageRecord } from './types'
+import type {
+  Annotation,
+  CategorySummaryKey,
+  RecentImageRecord,
+  RecentImagesSortMode,
+  ServerImageRecord,
+} from './types'
 
 interface PendingSave {
   filename: string
@@ -416,16 +427,22 @@ export default function App() {
       existingRecord?.displayName !== pending.displayName ||
       existingRecord?.width !== pending.width ||
       existingRecord?.height !== pending.height
+    const annotationsChanged = !storedAnnotationsMatch(existingSavedAnnotations, serializedAnnotations)
     const lastEditedAt =
-      !existingRecord || existingSavedAnnotations !== serializedAnnotations || metadataChanged
+      !existingRecord || annotationsChanged || metadataChanged
         ? new Date().toISOString()
         : existingRecord.lastEditedAt
 
     localStorage.setItem(storageKey, serializedAnnotations)
 
     const summary = summarizeAnnotations(pending.annotations)
+    // Per-class counts come from the category table, so a new class needs no edit here.
+    const categoryCounts = {} as Record<CategorySummaryKey, number>
+    for (const option of ELK_CATEGORY_OPTIONS) categoryCounts[option.summaryKey] = summary[option.summaryKey]
+
     setRecentImages(
       upsertRecentImage({
+        ...categoryCounts,
         id: `${pending.basePath}|${pending.filename}`,
         filename: pending.filename,
         displayName: pending.displayName,
@@ -435,11 +452,6 @@ export default function App() {
         lastEditedAt,
         counted: summary.counted,
         ignored: summary.ignored,
-        cows: summary.cows,
-        bulls: summary.bulls,
-        spikes: summary.spikes,
-        unclassifiedAntlerless: summary.unclassifiedAntlerless,
-        unclassified: summary.unclassified,
       }),
     )
   }, [])

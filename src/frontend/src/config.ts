@@ -51,8 +51,9 @@ export interface LabelCategoryOption {
 export const DEFAULT_CATEGORY: AnnotationCategory = 'cow'
 
 /**
- * Single source of truth for elk classes. Adding a class here is all that is needed for
- * rendering, keyboard shortcuts, counts, the status bar, the help overlay, and exports.
+ * Single source of truth for elk classes. An entry here drives rendering, keyboard shortcuts, counts,
+ * the status bar, the help overlay, and exports; adding a class also means widening `AnnotationCategory`
+ * and `CategorySummaryKey` in types.ts — both are compile errors if missed.
  */
 export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {

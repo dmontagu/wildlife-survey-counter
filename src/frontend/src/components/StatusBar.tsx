@@ -1,6 +1,6 @@
 import { ChevronDownIcon, DownloadIcon } from 'lucide-react'
 import { REVIEW_STATUS_COLORS } from '../colors'
-import { DEFAULT_CATEGORY, ELK_CATEGORY_OPTIONS } from '../config'
+import { ELK_CATEGORY_OPTIONS } from '../config'
 import { summarizeAnnotations } from '../lib/annotations'
 import { useAppState } from '../state'
 import BuildInfo from './BuildInfo'
@@ -40,7 +40,7 @@ export default function StatusBar({
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2">
         <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
         <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
-        {ELK_CATEGORY_OPTIONS.filter((option) => option.id !== DEFAULT_CATEGORY).map((option) => (
+        {ELK_CATEGORY_OPTIONS.map((option) => (
           <StatusChip
             key={option.id}
             badge={option.badge ?? undefined}
