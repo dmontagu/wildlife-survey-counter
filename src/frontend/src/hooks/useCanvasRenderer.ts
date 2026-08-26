@@ -67,6 +67,18 @@ function drawDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, radius
   ctx.closePath()
 }
 
+/**
+ * Equilateral triangle pointing up, `radius` from the centre to each vertex. A triangle's inradius is half its
+ * circumradius, so it needs roughly twice the diamond's radius to clear the same marker dot.
+ */
+function drawTriangle(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  ctx.beginPath()
+  ctx.moveTo(x, y - radius)
+  ctx.lineTo(x + radius * 0.866, y + radius * 0.5)
+  ctx.lineTo(x - radius * 0.866, y + radius * 0.5)
+  ctx.closePath()
+}
+
 function drawCategoryIndicator(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -84,6 +96,8 @@ function drawCategoryIndicator(
 
   if (indicator === 'diamond') {
     drawDiamond(ctx, x, y, radius + 4.75)
+  } else if (indicator === 'triangle') {
+    drawTriangle(ctx, x, y, radius * 2 + 4)
   } else {
     if (indicator === 'dashed-ring') ctx.setLineDash([3.5, 3])
     ctx.beginPath()

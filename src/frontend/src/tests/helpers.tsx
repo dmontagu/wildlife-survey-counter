@@ -1,5 +1,6 @@
 import { type RenderResult, render, screen, within } from '@testing-library/react'
 import App from '../App'
+import { emptyCategoryCounts } from '../lib/annotations'
 import type { Annotation, AnnotationCategory, AnnotationState, RecentImageRecord } from '../types'
 
 /**
@@ -91,11 +92,8 @@ export function recentImageRecord(overrides: Partial<RecentImageRecord> = {}): R
     lastEditedAt: '2026-01-01T00:00:00.000Z',
     counted: 0,
     ignored: 0,
-    cows: 0,
-    bulls: 0,
-    spikes: 0,
-    unclassifiedAntlerless: 0,
-    unclassified: 0,
+    // Per-class counts come from the category table, so a new class needs no edit here.
+    ...emptyCategoryCounts(),
     ...overrides,
   }
 }
