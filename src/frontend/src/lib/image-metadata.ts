@@ -50,6 +50,9 @@ const PNG_KEPT_CHUNKS = new Set([
   'gAMA',
   'cHRM',
   'sRGB',
+  'cICP',
+  'mDCV',
+  'cLLI',
   'iCCP',
   'sBIT',
   'bKGD',
@@ -278,7 +281,13 @@ export function stripPngMetadata(bytes: Uint8Array): Uint8Array[] {
       seenHeader = true
     }
 
-    if (PNG_KEPT_CHUNKS.has(type)) parts.push(bytes.subarray(offset, chunkEnd))
+    if (PNG_KEPT_CHUNKS.has(type)) {
+      parts.push(bytes.subarray(offset, chunkEnd))
+    } else if ((type.charCodeAt(0) & 0x20) === 0) {
+      // Critical bit clear (uppercase first letter): a decoder must not ignore this chunk, so we
+      // cannot safely drop it either. Decline and let the caller fall back to re-encoding.
+      throw new Error(`Unsupported critical PNG chunk: ${type}`)
+    }
     offset = chunkEnd
 
     // Anything trailing IEND is not part of the image.
