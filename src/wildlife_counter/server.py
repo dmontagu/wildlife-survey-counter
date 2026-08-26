@@ -18,7 +18,8 @@ from starlette.responses import StreamingResponse
 from wildlife_counter.config import settings
 from wildlife_counter.detect import detect_animals
 
-# Sends only when a LOGFIRE_TOKEN is configured; otherwise instrumentation is a no-op.
+# Sends only when a Logfire token is configured (LOGFIRE_TOKEN, or a .logfire/ credentials file
+# written by the Logfire CLI); otherwise instrumentation is a no-op.
 logfire.configure(send_to_logfire='if-token-present')
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
@@ -399,13 +400,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=settings.port)
     parser.add_argument('--host', type=str, default=settings.host)
-    parser.add_argument('--reload', action='store_true', help="Enable uvicorn's auto-reloader (dev only)")
+    parser.add_argument(
+        '--reload',
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable uvicorn's auto-reloader (dev only); overrides WSC_RELOAD",
+    )
     args = parser.parse_args()
     uvicorn.run(
         'wildlife_counter.server:app',
         host=args.host,
         port=args.port,
-        reload=args.reload or settings.reload,
+        reload=settings.reload if args.reload is None else args.reload,
         log_config=UVICORN_LOG_CONFIG,
     )
 

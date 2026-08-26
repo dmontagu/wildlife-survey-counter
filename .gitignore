@@ -39,3 +39,6 @@ data/
 # Private planning / internal docs
 plans/
 project/
+
+# Logfire CLI credentials (would enable telemetry sends)
+.logfire/

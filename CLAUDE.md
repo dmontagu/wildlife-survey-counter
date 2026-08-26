@@ -33,8 +33,9 @@ The frontend Vite config proxies `/api`, `/samples`, and `/uploads` to the backe
 
 ## Backend
 
-- **Framework**: FastAPI, served by uvicorn, instrumented with Logfire. Telemetry is only sent when
-  `LOGFIRE_TOKEN` is set (`send_to_logfire='if-token-present'`); otherwise instrumentation is a no-op.
+- **Framework**: FastAPI, served by uvicorn, instrumented with Logfire. Telemetry is only sent when a
+  Logfire token is configured — `LOGFIRE_TOKEN`, or a `.logfire/` credentials file from the Logfire CLI
+  (`send_to_logfire='if-token-present'`); otherwise instrumentation is a no-op.
 - **Entry point**: `wildlife_counter.server:app` (or `python -m wildlife_counter.server`, which accepts
   `--host`, `--port`, and `--reload`). Auto-reload is off by default — `make dev` and the dev Docker image
   pass `--reload`; production does not.
