@@ -40,13 +40,15 @@ export default function StatusBar({
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
           <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
-          <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
+          {summary.unconfirmed > 0 ? (
+            <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
+          ) : null}
           {ELK_CATEGORY_OPTIONS.map((option) => (
             <StatusChip
               key={option.id}
-              badge={option.badge ?? undefined}
+              badge={option.shortLabel}
               color={option.color}
-              label={option.label}
+              label={option.statusLabel ?? option.label}
               value={summary[option.summaryKey]}
             />
           ))}
