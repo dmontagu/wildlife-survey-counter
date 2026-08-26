@@ -6,7 +6,7 @@ import type { ViewportActions } from '../hooks/useViewport'
 import { isIgnoredAnnotation } from '../lib/annotations'
 import { isMac, platformModifier } from '../platform'
 import { useAppState, useDispatch } from '../state'
-import type { Annotation } from '../types'
+import type { Annotation, MarkerVisibilityMode } from '../types'
 import { ShortcutSequence } from './ShortcutKey'
 
 interface MinimapProps {
@@ -17,6 +17,24 @@ interface MinimapProps {
 }
 
 const MINIMAP_WIDTH = 200
+
+/**
+ * Everything a minimap frame is painted from. Each frame is compared against the previously
+ * painted one so identical frames can be skipped.
+ *
+ * The main canvas' `vp.dirty` flag can't be shared for this: its renderer clears the flag as it
+ * draws, so whichever of the two loops ran first would starve the other.
+ */
+interface MinimapFrameInputs {
+  offsetX: number
+  offsetY: number
+  scale: number
+  annotations: Annotation[]
+  selectedIds: Set<number>
+  showRejected: boolean
+  threshold: number
+  markerVisibility: MarkerVisibilityMode
+}
 
 export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: MinimapProps) {
   const state = useAppState()
@@ -40,25 +58,64 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
   const imgW = state.image?.width ?? 1
   const imgH = state.image?.height ?? 1
   const aspect = imgH / imgW
-  const minimapH = Math.round(MINIMAP_WIDTH * aspect)
+  // Never let the height reach 0: drawImage() throws for a zero-height canvas source (extreme panoramas).
+  const minimapH = Math.max(1, Math.round(MINIMAP_WIDTH * aspect))
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas || !state.image) return
+    const image = state.image
+    if (!canvas || !image) return
 
     const ctx = canvas.getContext('2d')!
     const scale = MINIMAP_WIDTH / imgW
 
+    // Pre-render the downscaled image once per image load. Rescaling the full-resolution element is
+    // by far the most expensive part of a frame, and the result never changes while the image doesn't.
+    const base = document.createElement('canvas')
+    base.width = MINIMAP_WIDTH
+    base.height = minimapH
+    base.getContext('2d')?.drawImage(image.element, 0, 0, MINIMAP_WIDTH, minimapH)
+
+    // Inputs of the last painted frame; null forces a paint on the first frame after (re)mount.
+    let painted: MinimapFrameInputs | null = null
+
     function render() {
       animRef.current = requestAnimationFrame(render)
+
+      const v = vp.viewport.current
+      const prev = painted
+      // Skip frames that would paint exactly the same pixels — panning, zooming and every
+      // annotation change land in one of these, so idle frames cost a handful of comparisons.
+      if (
+        prev !== null &&
+        prev.offsetX === v.offsetX &&
+        prev.offsetY === v.offsetY &&
+        prev.scale === v.scale &&
+        prev.annotations === annotationsRef.current &&
+        prev.selectedIds === selectedIdsRef.current &&
+        prev.showRejected === showRejectedRef.current &&
+        prev.threshold === thresholdRef.current &&
+        prev.markerVisibility === markerVisibilityRef.current
+      ) {
+        return
+      }
+      painted = {
+        offsetX: v.offsetX,
+        offsetY: v.offsetY,
+        scale: v.scale,
+        annotations: annotationsRef.current,
+        selectedIds: selectedIdsRef.current,
+        showRejected: showRejectedRef.current,
+        threshold: thresholdRef.current,
+        markerVisibility: markerVisibilityRef.current,
+      }
 
       ctx.fillStyle = '#1a1a1a'
       ctx.fillRect(0, 0, MINIMAP_WIDTH, minimapH)
 
-      ctx.drawImage(state.image!.element, 0, 0, MINIMAP_WIDTH, minimapH)
+      ctx.drawImage(base, 0, 0)
 
       // Compute viewport rect in minimap coords
-      const v = vp.viewport.current
       const vx = (-v.offsetX / v.scale) * scale
       const vy = (-v.offsetY / v.scale) * scale
       const vw = (canvasWidth / v.scale) * scale
@@ -72,7 +129,7 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
       ctx.beginPath()
       ctx.rect(vx, vy, vw, vh)
       ctx.clip()
-      ctx.drawImage(state.image!.element, 0, 0, MINIMAP_WIDTH, minimapH)
+      ctx.drawImage(base, 0, 0)
       ctx.restore()
 
       // Draw annotations with selected markers last so they stay on top in dense clusters.
