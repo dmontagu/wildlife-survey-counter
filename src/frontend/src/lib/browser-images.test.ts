@@ -114,6 +114,40 @@ describe('saveBrowserImage', () => {
 
     expect(await restored?.text()).toBe('still-here')
   })
+
+  /**
+   * Re-opening the same photo must resume its existing record instead of stacking up another
+   * multi-MB copy — otherwise storage fills and the earlier annotations are stranded.
+   */
+  it('reuses the existing record when the same file is opened again', async () => {
+    const make = () => new File(['same-bytes'], 'survey.jpg', { type: 'image/jpeg', lastModified: 1_700_000_000_000 })
+    const first = await saveBrowserImage(make())
+    const second = await saveBrowserImage(make())
+
+    expect(second.id).toBe(first.id)
+    expect(second.basePath).toBe(first.basePath)
+
+    const db = await openRaw()
+    const records = await readAllRaw(db)
+    db.close()
+    expect(records).toHaveLength(1)
+  })
+
+  it('stores a new record when the bytes differ even if the name matches', async () => {
+    const first = await saveBrowserImage(
+      new File(['aaa'], 'survey.jpg', { type: 'image/jpeg', lastModified: 1_700_000_000_000 }),
+    )
+    const second = await saveBrowserImage(
+      new File(['bbbb'], 'survey.jpg', { type: 'image/jpeg', lastModified: 1_700_000_000_000 }),
+    )
+
+    expect(second.id).not.toBe(first.id)
+
+    const db = await openRaw()
+    const records = await readAllRaw(db)
+    db.close()
+    expect(records).toHaveLength(2)
+  })
 })
 
 describe('getBrowserImage', () => {

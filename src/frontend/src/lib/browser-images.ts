@@ -8,6 +8,12 @@ interface StoredBrowserImage {
   file: Blob
   filename: string
   savedAt: string
+  /** name:size:lastModified, so re-opening the same file reuses this record. */
+  dedupeKey?: string
+}
+
+function dedupeKeyForFile(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -64,6 +70,24 @@ export function browserImageIdFromBasePath(basePath: string): string | null {
 
 export async function saveBrowserImage(file: File): Promise<{ id: string; basePath: string }> {
   const db = await openDatabase()
+  const dedupeKey = dedupeKeyForFile(file)
+
+  // Re-opening the same file should resume its existing record (and its annotations) instead of
+  // storing another copy of a multi-MB photo. Blobs from getAll are lazy references, so this does
+  // not read image bytes into memory.
+  const existing = await readRequest(
+    db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll() as IDBRequest<StoredBrowserImage[]>,
+  )
+  const match = existing.find((record) =>
+    record.dedupeKey
+      ? record.dedupeKey === dedupeKey
+      : record.filename === file.name && record.file?.size === file.size,
+  )
+  if (match) {
+    db.close()
+    return { id: match.id, basePath: browserImageBasePath(match.id) }
+  }
+
   const id = createBrowserImageId()
   const transaction = db.transaction(STORE_NAME, 'readwrite')
   const store = transaction.objectStore(STORE_NAME)
@@ -72,6 +96,7 @@ export async function saveBrowserImage(file: File): Promise<{ id: string; basePa
     file,
     filename: file.name,
     savedAt: new Date().toISOString(),
+    dedupeKey,
   } satisfies StoredBrowserImage)
   await transactionDone(transaction)
   db.close()
