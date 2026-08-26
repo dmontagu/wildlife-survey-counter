@@ -59,8 +59,13 @@ lint-ts:
 	@echo "Run biome lint"
 	npx --prefix src/frontend biome lint src/frontend/
 
+.PHONY: check-ts
+check-ts:
+	@echo "Run biome check (format + lint + imports, same as CI)"
+	npx --prefix src/frontend biome check src/frontend/
+
 .PHONY: lint
-lint: lint-py lint-ts
+lint: lint-py check-ts
 
 .PHONY: typecheck-py
 typecheck-py:
@@ -87,6 +92,8 @@ WITH_ML ?= false
 
 .PHONY: docker-build
 docker-build:
+	@if [ "$(WITH_ML)" != "true" ] && [ "$(WITH_ML)" != "false" ]; then \
+		echo "WITH_ML must be 'true' or 'false' (got '$(WITH_ML)')"; exit 1; fi
 	@echo "Building Docker image (WITH_ML=$(WITH_ML))"
 	docker build --build-arg WITH_ML=$(WITH_ML) -t wildlife-survey-counter .
 

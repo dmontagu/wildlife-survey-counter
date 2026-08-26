@@ -87,7 +87,13 @@ jobs:
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8100/api/health; then
               echo "image is serving /api/health"
-              exit 0
+              if curl -sf http://localhost:8100/ | grep -q '<div id="root"'; then
+                echo "image is serving the frontend"
+                exit 0
+              fi
+              echo "GET / did not return the built frontend"
+              docker logs wsc-ci
+              exit 1
             fi
             sleep 2
           done
@@ -98,3 +104,8 @@ jobs:
       - name: Tear down
         if: always()
         run: docker rm -f wsc-ci || true
+
+      # The full ML image is multi-GB and is not built here; this validates the apt layer it
+      # depends on (the part that broke in #2) without pulling any Python wheels.
+      - name: Validate ML system-libs stage
+        run: docker build --build-arg WITH_ML=true --target ml-system-libs -t wsc-ml-system-libs:ci .

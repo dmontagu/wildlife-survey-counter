@@ -43,7 +43,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 COPY pyproject.toml uv.lock* ./
-RUN uv sync --no-dev --no-install-project
+RUN uv sync --locked --no-dev --no-install-project
 
 # ---------------------------------------------------------------------------
 # Stage 3a: WITH_ML=false — nothing extra to do
@@ -68,7 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 FROM ml-system-libs AS deps-true
 
-RUN uv sync --no-dev --no-install-project --extra ml
+RUN uv sync --locked --no-dev --no-install-project --extra ml
 
 # Pre-download model weights so the sandbox does not fetch them at request time.
 # --no-sync: dependencies are already installed; without it uv would try to

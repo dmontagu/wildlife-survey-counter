@@ -65,7 +65,8 @@ The default image is headless and lean — FastAPI, OpenCV (headless), and the b
 no PyTorch and no model weights. It exposes a Docker healthcheck on `GET /api/health`.
 
 To also install the optional ML stack (torch, transformers, ultralytics) and pre-download the
-weights used by the agent sandbox, build with `WITH_ML=true`. The resulting image is several GB:
+weights used by the agent sandbox, build with `WITH_ML=true`. The resulting image is several GB, and
+CI only validates its system-library stage — the full ML build is not exercised automatically:
 
 ```bash
 make docker-build WITH_ML=true
