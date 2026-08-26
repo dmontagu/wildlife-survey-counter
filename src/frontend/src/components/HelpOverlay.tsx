@@ -77,7 +77,7 @@ export default function HelpOverlay() {
 
   return (
     <Dialog open={state.helpVisible} onOpenChange={() => dispatch({ type: 'TOGGLE_HELP' })}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>How to label an image</DialogTitle>
           <DialogDescription>
@@ -95,7 +95,7 @@ export default function HelpOverlay() {
                 {group.items.map(([shortcut, description]) => (
                   <div
                     key={`${group.title}-${shortcut}`}
-                    className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background/45 px-3 py-2"
+                    className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/45 px-3 py-2"
                   >
                     <ShortcutSequence shortcut={shortcut} compact />
                     <span className="text-sm leading-5 text-muted-foreground">{description}</span>
