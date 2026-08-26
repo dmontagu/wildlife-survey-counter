@@ -21,7 +21,7 @@ install:
 .PHONY: dev
 dev:
 	@trap 'kill 0' EXIT; \
-	uv run python -m wildlife_counter.server & \
+	uv run python -m wildlife_counter.server --reload & \
 	cd src/frontend && npm run dev & \
 	wait
 
