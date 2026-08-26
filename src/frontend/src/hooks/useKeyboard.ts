@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react'
 import { useEffect } from 'react'
-import { ELK_CATEGORY_OPTIONS, KEYS, nextCategory } from '../config'
+import { KEYS, nextCategory, previousCategory } from '../config'
 import type { Action, AnnotationCategory } from '../types'
 
 function normalizedKey(value: string): string {
@@ -90,15 +90,10 @@ export function useKeyboard(
       }
 
       if (matchesKey(e, KEYS.cycleCategory)) {
-        dispatch({ type: 'SET_ACTIVE_CATEGORY', category: nextCategory(activeCategory) })
+        // Shift reverses the cycle direction.
+        const category = e.shiftKey ? previousCategory(activeCategory) : nextCategory(activeCategory)
+        dispatch({ type: 'SET_ACTIVE_CATEGORY', category })
         return
-      }
-
-      for (const option of ELK_CATEGORY_OPTIONS) {
-        if (option.shortcut && matchesKey(e, [option.shortcut])) {
-          dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
-          return
-        }
       }
     }
 

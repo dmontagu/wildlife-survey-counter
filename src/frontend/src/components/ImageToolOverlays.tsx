@@ -5,6 +5,7 @@ import { isIgnoredAnnotation } from '../lib/annotations'
 import { useAppState, useDispatch } from '../state'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 export default function ImageToolOverlays() {
   const state = useAppState()
@@ -46,27 +47,29 @@ export default function ImageToolOverlays() {
           }
           widthClass="w-[21rem]"
         >
-          {ELK_CATEGORY_OPTIONS.map((option) => (
-            <FloatingActionButton
-              key={option.id}
-              active={displayCategory === option.id}
-              label={option.shortLabel}
-              ariaLabel={option.label}
-              square
-              title={option.shortcut ? `${option.label} (${option.shortcut.toUpperCase()})` : option.label}
-              onClick={() => {
-                if (state.selectedIds.size > 0) {
-                  dispatch({
-                    type: 'SET_CATEGORY',
-                    ids: [...state.selectedIds],
-                    category: option.id,
-                  })
-                  return
-                }
-                dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
-              }}
-            />
-          ))}
+          <TooltipProvider delayDuration={150}>
+            {ELK_CATEGORY_OPTIONS.map((option) => (
+              <FloatingActionButton
+                key={option.id}
+                active={displayCategory === option.id}
+                label={option.shortLabel}
+                ariaLabel={option.label}
+                square
+                tooltip={option.hint ? `${option.label} — ${option.hint}` : option.label}
+                onClick={() => {
+                  if (state.selectedIds.size > 0) {
+                    dispatch({
+                      type: 'SET_CATEGORY',
+                      ids: [...state.selectedIds],
+                      category: option.id,
+                    })
+                    return
+                  }
+                  dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+                }}
+              />
+            ))}
+          </TooltipProvider>
 
           <div className="basis-full flex items-center justify-end gap-2 px-1 text-xs text-slate-100">
             {displayOption ? (
@@ -159,7 +162,7 @@ function FloatingActionButton({
   label,
   ariaLabel,
   square = false,
-  title,
+  tooltip,
   onClick,
 }: {
   active?: boolean
@@ -169,15 +172,15 @@ function FloatingActionButton({
   ariaLabel?: string
   /** Fixed-width button for one-letter labels. */
   square?: boolean
-  title?: string
+  /** Shown in a tooltip on hover/focus; needs an enclosing TooltipProvider. */
+  tooltip?: React.ReactNode
   onClick: () => void
 }) {
-  return (
+  const button = (
     <Button
       variant={active ? 'default' : 'outline'}
       size="sm"
       disabled={disabled}
-      title={title}
       aria-label={ariaLabel}
       onClick={onClick}
       className={[
@@ -190,5 +193,12 @@ function FloatingActionButton({
       {Icon ? <Icon className="size-3.5" /> : null}
       <span>{label}</span>
     </Button>
+  )
+  if (!tooltip) return button
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }

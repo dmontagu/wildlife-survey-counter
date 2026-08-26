@@ -35,15 +35,14 @@ export interface LabelCategoryOption {
   label: string
   /** One-letter shorthand shown in the class palette; the selected class is spelled out next to it. */
   shortLabel: string
+  /** Optional clarification shown after the name in the palette tooltip. */
+  hint?: string
   /** Lowercase plural-ish noun used after a count ("3 bulls", "2 unclassified antlerless"). */
   countLabel: string
   /** Short text drawn in the marker badge; null means no badge (plain marker). */
   badge: string | null
   /** Shape drawn around the marker. The diamond indicator also gets a diamond badge. */
   indicator: CategoryIndicator
-  /** Single-letter keyboard shortcut (no modifier); null means only reachable via the palette / E cycle. */
-  shortcut: string | null
-  description: string
   /** Marker, badge, and status chip colour. */
   color: string
   /** Field on AnnotationSummary / RecentImageRecord that counts this class. */
@@ -53,8 +52,8 @@ export interface LabelCategoryOption {
 export const DEFAULT_CATEGORY: AnnotationCategory = 'cow'
 
 /**
- * Single source of truth for elk classes. An entry here drives rendering, keyboard shortcuts, counts,
- * the status bar, the help overlay, and exports; adding a class also means widening `AnnotationCategory`
+ * Single source of truth for elk classes. An entry here drives rendering, the E-cycle order, counts,
+ * the status bar, and exports; adding a class also means widening `AnnotationCategory`
  * and `CategorySummaryKey` in types.ts — both are compile errors if missed.
  */
 export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
@@ -65,8 +64,6 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     countLabel: 'cows',
     badge: null,
     indicator: 'none',
-    shortcut: null,
-    description: 'Set new markers to cow and clear special status on the current selection',
     color: '#17B8FF',
     summaryKey: 'cows',
   },
@@ -77,8 +74,6 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     countLabel: 'bulls',
     badge: 'B',
     indicator: 'ring',
-    shortcut: 'b',
-    description: 'Set new markers to bull and update the current selection',
     color: '#FF5D95',
     summaryKey: 'bulls',
   },
@@ -89,8 +84,6 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     countLabel: 'spikes',
     badge: 'S',
     indicator: 'diamond',
-    shortcut: 's',
-    description: 'Set new markers to spike and update the current selection',
     color: '#73E46F',
     summaryKey: 'spikes',
   },
@@ -98,11 +91,10 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'unclassified-antlerless',
     label: 'Unclassified antlerless',
     shortLabel: 'A',
+    hint: 'cow or calf — definitely not a bull or spike',
     countLabel: 'unclassified antlerless',
     badge: 'A',
     indicator: 'dashed-ring',
-    shortcut: 'a',
-    description: 'Set new markers to unclassified antlerless (cow or calf) and update the current selection',
     color: '#C084FC',
     summaryKey: 'unclassifiedAntlerless',
   },
@@ -110,11 +102,10 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'unclassified',
     label: 'Unclassified',
     shortLabel: 'U',
+    hint: 'an elk whose type could not be determined',
     countLabel: 'unclassified',
     badge: 'U',
     indicator: 'dashed-ring',
-    shortcut: 'x',
-    description: 'Set new markers to unclassified (elk of unknown type) and update the current selection',
     color: '#D4D4D8',
     summaryKey: 'unclassified',
   },
@@ -134,4 +125,9 @@ export function categoryOption(category: AnnotationCategory): LabelCategoryOptio
 export function nextCategory(category: AnnotationCategory): AnnotationCategory {
   const index = ELK_CATEGORY_OPTIONS.findIndex((option) => option.id === category)
   return ELK_CATEGORY_OPTIONS[(index + 1) % ELK_CATEGORY_OPTIONS.length]!.id
+}
+
+export function previousCategory(category: AnnotationCategory): AnnotationCategory {
+  const index = ELK_CATEGORY_OPTIONS.findIndex((option) => option.id === category)
+  return ELK_CATEGORY_OPTIONS[(index - 1 + ELK_CATEGORY_OPTIONS.length) % ELK_CATEGORY_OPTIONS.length]!.id
 }

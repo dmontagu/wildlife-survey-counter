@@ -1,4 +1,3 @@
-import { ELK_CATEGORY_OPTIONS } from '../config'
 import { isMac, platformModifier } from '../platform'
 import { useAppState, useDispatch } from '../state'
 import { ShortcutSequence } from './ShortcutKey'
@@ -31,9 +30,6 @@ const SHARED_GROUPS = [
     title: 'Classification',
     items: [
       ['E', 'Cycle the selected marker label, or set the class for the next new marker when nothing is selected'],
-      ...ELK_CATEGORY_OPTIONS.filter((option) => option.shortcut !== null).map(
-        (option) => [option.shortcut!.toUpperCase(), option.description] as const,
-      ),
     ],
   },
 ] as const
