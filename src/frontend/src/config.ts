@@ -35,6 +35,8 @@ export interface LabelCategoryOption {
   label: string
   /** One-letter shorthand shown in the class palette; the selected class is spelled out next to it. */
   shortLabel: string
+  /** Word label for the status-bar chip; defaults to `label`. Lets the bar stay compact (e.g. "Antlerless"). */
+  statusLabel?: string
   /** Keyboard shortcut (no modifier) — the same letter as shortLabel. */
   shortcut: string
   /** Optional clarification shown after the name in the palette tooltip. */
@@ -96,6 +98,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'unclassified-antlerless',
     label: 'Unclassified antlerless',
     shortLabel: 'A',
+    statusLabel: 'Antlerless',
     shortcut: 'a',
     hint: 'cow or calf — definitely not a bull or spike',
     countLabel: 'unclassified antlerless',
