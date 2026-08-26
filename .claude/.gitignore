@@ -1,0 +1,13 @@
+# Machine-local Claude Code state — never shared.
+# Shared config (settings.json, commands/, agents/, skills/, hooks/) stays tracked.
+
+# Per-developer permission/MCP overrides
+settings.local.json
+
+# Agent worktrees created by Claude Code (each is its own git worktree)
+worktrees/
+
+# Session scratch / local caches
+.cache/
+shell-snapshots/
+todos/
