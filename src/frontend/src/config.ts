@@ -72,8 +72,9 @@ export const DEFAULT_CATEGORY: AnnotationCategory = 'cow'
  * order, counts, the status bar, the help overlay, and exports; adding a class also means widening `AnnotationCategory`
  * and `CategorySummaryKey` in types.ts — both are compile errors if missed.
  *
- * The seven classes are the ones Montana FWP records in the field. Marker shape carries certainty rather than
- * identity: a plain dot or a solid outline is a specific call, a dashed ring means "unclassified" at that level.
+ * The seven classes match the classification a survey crew records in the field. Marker shape carries certainty
+ * rather than identity: a plain dot or a solid outline is a specific call, a dashed ring means "unclassified" at
+ * that level.
  */
 export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
   {
