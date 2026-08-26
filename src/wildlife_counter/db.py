@@ -86,16 +86,6 @@ async def get_detection_run(db: aiosqlite.Connection, run_id: str) -> dict[str, 
         return _row_to_dict(row) if row else None
 
 
-async def get_latest_detection(db: aiosqlite.Connection, image_filename: str) -> dict[str, Any] | None:
-    async with db.execute(
-        "SELECT * FROM detection_runs WHERE image_filename = ? AND status = 'complete'"
-        ' ORDER BY completed_at DESC LIMIT 1',
-        (image_filename,),
-    ) as cursor:
-        row = await cursor.fetchone()
-        return _row_to_dict(row) if row else None
-
-
 async def list_detection_runs(db: aiosqlite.Connection, image_filename: str | None = None) -> list[dict[str, Any]]:
     if image_filename:
         query = 'SELECT * FROM detection_runs WHERE image_filename = ? ORDER BY started_at DESC'
