@@ -40,6 +40,47 @@ Config: `components.json` in the frontend root.
 ## Server
 The backend is a Python server (`src/wildlife_counter/server.py`) that serves images from `storage/samples/` and `storage/uploads/` directories. Vite proxies `/api`, `/samples`, and `/uploads` to `http://localhost:8100`.
 
+## Testing
+
+**Vitest** + **Testing Library** in a jsdom environment. Config lives in the `test` block of
+`vite.config.ts`; shared setup is `src/tests/setup.ts` and shared fixtures are `src/tests/helpers.tsx`.
+
+```bash
+make test-ts                        # whole suite (also runs in CI)
+make test-ts ARGS=storage           # scope to files matching a pattern
+make test-ts ARGS='-t "undo"'       # scope to test names
+make test-ts-watch                  # watch mode
+```
+
+- Tests live next to the code as `*.test.ts` / `*.test.tsx`. Vitest isolates each file, so no
+  naming convention is needed to opt out of shared state.
+- **Prefer `userEvent` and semantic queries** (`getByRole`, `getByLabelText`) over DOM structure, so
+  a styling change does not break a test about behaviour. Class names appear in both the palette and
+  the status bar, so read counts through `statusCount()` in `src/tests/helpers.tsx`.
+- Reducer and pure-function tests carry the transition matrices and edge cases; App-level tests
+  (`src/app-*.test.tsx`) mount the real tree and assert on what actually lands in browser storage.
+- **`fast-check`** for properties that must hold over any input — normalisation round-trips, storage
+  key uniqueness, undo/redo integrity. Reach for it when "for all X" is the actual requirement.
+- jsdom implements no canvas, `ResizeObserver`, object URLs, or image loading. Those stubs live in
+  `src/tests/setup.ts` and `stubImageLoading()`; don't re-stub them per file.
+
+### Persistence is the thing to test hardest
+
+A release that loses a reviewer's counts is the worst failure this app has. Two suites exist for it
+and should grow whenever the stored shape changes:
+
+- `src/app-storage-upgrade.test.tsx` — snapshots of browser storage as *previously shipped builds*
+  wrote it, each opened by today's build. **Add a snapshot whenever the persisted shape changes.**
+- `src/app-persistence.test.tsx` — the save/restore loop through the real component tree, including
+  unreadable payloads, a full `localStorage`, and deleting one image without touching another.
+
+The rule they encode: a build may migrate stored data, but it may never delete what it could not
+understand. Anything unreadable is copied to `<key>:unreadable` rather than overwritten, and a
+migration only drops its source once the destination write has succeeded.
+
+`src/lib/storage.test.ts` and `src/config.test.ts` pin the storage key names and the shipped class
+ids as literals. If one of those tests fails, the change needs a migration — not a new expectation.
+
 ## Formatting & Linting
 **Biome** handles both formatting and linting (replaces Prettier + ESLint). Config in `biome.json` at repo root.
 - No semicolons, single quotes, trailing commas, 2-space indent, 119 char line width
