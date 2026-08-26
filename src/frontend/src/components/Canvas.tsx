@@ -127,7 +127,8 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
     wrappedDispatch,
     vp.dirty,
     hasSelection
-      ? (state.annotations.find((annotation) => state.selectedIds.has(annotation.id))?.category ?? null)
+      ? (state.annotations.find((annotation) => state.selectedIds.has(annotation.id))?.category ??
+          state.activeCategory)
       : state.activeCategory,
   )
   useCanvasRenderer(canvasRef, state, vp, selectionRect, lassoPath, dragOverlay)

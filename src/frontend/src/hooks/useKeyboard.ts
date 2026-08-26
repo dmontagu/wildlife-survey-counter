@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react'
 import { useEffect } from 'react'
-import { KEYS } from '../config'
+import { ELK_CATEGORY_OPTIONS, KEYS, nextCategory, previousCategory } from '../config'
 import type { Action, AnnotationCategory } from '../types'
 
 function normalizedKey(value: string): string {
@@ -23,12 +23,6 @@ function matchesKey(
   )
 }
 
-function nextCategory(category: AnnotationCategory): AnnotationCategory {
-  if (category === null) return 'bull'
-  if (category === 'bull') return 'spike'
-  return null
-}
-
 export function useKeyboard(
   dispatch: Dispatch<Action>,
   dirty: React.MutableRefObject<boolean>,
@@ -45,13 +39,14 @@ export function useKeyboard(
         return
       }
 
-      if (matchesKey(e, KEYS.confirmSelection)) {
-        dispatch({ type: 'CONFIRM', ids: [] })
+      // Shift+Enter is checked first: the plain-Enter binding requires no modifiers, but keep the order obvious.
+      if (matchesKey(e, KEYS.unconfirmSelection)) {
+        dispatch({ type: 'UNCONFIRM', ids: [] })
         return
       }
 
-      if (matchesKey(e, KEYS.unconfirmSelection)) {
-        dispatch({ type: 'UNCONFIRM', ids: [] })
+      if (matchesKey(e, KEYS.confirmSelection)) {
+        dispatch({ type: 'CONFIRM', ids: [] })
         return
       }
 
@@ -96,8 +91,17 @@ export function useKeyboard(
       }
 
       if (matchesKey(e, KEYS.cycleCategory)) {
-        dispatch({ type: 'SET_ACTIVE_CATEGORY', category: nextCategory(activeCategory) })
+        // Shift reverses the cycle direction.
+        const category = e.shiftKey ? previousCategory(activeCategory) : nextCategory(activeCategory)
+        dispatch({ type: 'SET_ACTIVE_CATEGORY', category })
         return
+      }
+
+      for (const option of ELK_CATEGORY_OPTIONS) {
+        if (matchesKey(e, [option.shortcut])) {
+          dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+          return
+        }
       }
     }
 

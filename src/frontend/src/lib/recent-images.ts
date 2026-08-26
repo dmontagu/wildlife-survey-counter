@@ -1,4 +1,5 @@
-import type { RecentImageRecord, RecentImagesSortMode } from '../types'
+import { ELK_CATEGORY_OPTIONS } from '../config'
+import type { CategorySummaryKey, RecentImageRecord, RecentImagesSortMode } from '../types'
 import { displayNameFor } from './image-names'
 import { imageStorageId, LS_RECENT_IMAGES_KEY } from './storage'
 
@@ -29,7 +30,15 @@ function normalizeRecord(raw: unknown): RecentImageRecord | null {
   const basePath = typeof data.basePath === 'string' ? data.basePath : null
   if (!filename || basePath === null) return null
 
+  // Records saved before a class existed simply lack its field; treat that as zero.
+  const categoryCounts = {} as Record<CategorySummaryKey, number>
+  for (const option of ELK_CATEGORY_OPTIONS) {
+    const value = data[option.summaryKey]
+    categoryCounts[option.summaryKey] = typeof value === 'number' ? value : 0
+  }
+
   return {
+    ...categoryCounts,
     id: typeof data.id === 'string' ? data.id : imageStorageId(filename, basePath),
     filename,
     displayName: typeof data.displayName === 'string' ? data.displayName : null,
@@ -44,8 +53,6 @@ function normalizeRecord(raw: unknown): RecentImageRecord | null {
           : new Date().toISOString(),
     counted: typeof data.counted === 'number' ? data.counted : 0,
     ignored: typeof data.ignored === 'number' ? data.ignored : 0,
-    bulls: typeof data.bulls === 'number' ? data.bulls : 0,
-    spikes: typeof data.spikes === 'number' ? data.spikes : 0,
   }
 }
 

@@ -1,3 +1,4 @@
+import { ELK_CATEGORY_OPTIONS } from '../config'
 import { isMac, platformModifier } from '../platform'
 import { useAppState, useDispatch } from '../state'
 import { ShortcutSequence } from './ShortcutKey'
@@ -17,8 +18,8 @@ const SHARED_GROUPS = [
     title: 'Tools',
     items: [
       ['Esc', 'Clear the current selection'],
-      ['C', 'Confirm the selected marker or markers as reviewed'],
-      ['U', 'Mark the selected marker or markers as unconfirmed'],
+      ['Enter', 'Confirm the selected marker or markers as reviewed'],
+      ['Shift+Enter', 'Mark the selected marker or markers as unconfirmed'],
       ['Backspace', 'Delete the selected marker'],
       ['Shift+Drag', 'Select markers in a box'],
       [`Shift+${platformModifier}+Drag`, 'Select markers in a box and confirm them immediately'],
@@ -30,6 +31,9 @@ const SHARED_GROUPS = [
     title: 'Classification',
     items: [
       ['E', 'Cycle the selected marker label, or set the class for the next new marker when nothing is selected'],
+      ...ELK_CATEGORY_OPTIONS.map(
+        (option) => [option.shortcut.toUpperCase(), `Set the class to ${option.label.toLowerCase()}`] as const,
+      ),
     ],
   },
 ] as const

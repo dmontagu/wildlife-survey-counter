@@ -1,10 +1,11 @@
 import { CheckIcon } from 'lucide-react'
 import { useMemo } from 'react'
-import { ELK_CATEGORY_OPTIONS } from '../config'
+import { categoryOption, ELK_CATEGORY_OPTIONS } from '../config'
 import { isIgnoredAnnotation } from '../lib/annotations'
 import { useAppState, useDispatch } from '../state'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 export default function ImageToolOverlays() {
   const state = useAppState()
@@ -17,7 +18,7 @@ export default function ImageToolOverlays() {
 
   const selectedCategory = useMemo(() => {
     if (selectedAnnotations.length === 0) return undefined
-    const first = selectedAnnotations[0]?.category ?? null
+    const first = selectedAnnotations[0]!.category
     return selectedAnnotations.every((annotation) => annotation.category === first) ? first : undefined
   }, [selectedAnnotations])
   const confirmableSelectionCount = useMemo(
@@ -29,6 +30,7 @@ export default function ImageToolOverlays() {
   )
 
   const displayCategory = state.selectedIds.size > 0 ? selectedCategory : state.activeCategory
+  const displayOption = displayCategory ? categoryOption(displayCategory) : undefined
 
   if (!state.image) return null
 
@@ -45,30 +47,50 @@ export default function ImageToolOverlays() {
           }
           widthClass="w-[21rem]"
         >
-          {ELK_CATEGORY_OPTIONS.map((option) => (
-            <FloatingActionButton
-              key={option.label}
-              active={displayCategory === option.id}
-              label={option.label}
-              onClick={() => {
-                if (state.selectedIds.size > 0) {
-                  dispatch({
-                    type: 'SET_CATEGORY',
-                    ids: [...state.selectedIds],
-                    category: option.id,
-                  })
-                  return
-                }
-                dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
-              }}
-            />
-          ))}
+          <TooltipProvider delayDuration={150}>
+            {ELK_CATEGORY_OPTIONS.map((option) => (
+              <FloatingActionButton
+                key={option.id}
+                active={displayCategory === option.id}
+                label={option.shortLabel}
+                ariaLabel={option.label}
+                square
+                tooltip={`${option.label} (${option.shortcut.toUpperCase()})${option.hint ? ` — ${option.hint}` : ''}`}
+                onClick={() => {
+                  if (state.selectedIds.size > 0) {
+                    dispatch({
+                      type: 'SET_CATEGORY',
+                      ids: [...state.selectedIds],
+                      category: option.id,
+                    })
+                    return
+                  }
+                  dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+                }}
+              />
+            ))}
+          </TooltipProvider>
+
+          <div className="basis-full flex items-center justify-end gap-2 px-1 text-xs text-slate-100">
+            {displayOption ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: displayOption.color }}
+                />
+                <span>{displayOption.label}</span>
+              </>
+            ) : (
+              <span className="text-slate-300/80">Mixed classes — pick one to apply it to the selection</span>
+            )}
+          </div>
 
           {state.selectedIds.size > 0 ? (
             <div className="basis-full space-y-2 border-t border-white/10 px-1 pt-2">
               <div className="rounded-xl bg-white/5 px-2.5 py-2 text-[11px] leading-4 text-slate-200/90">
-                This changes the class of the {state.selectedIds.size} selected marker
-                {state.selectedIds.size === 1 ? '' : 's'}. Changing the class or moving a marker also confirms it.
+                Sets the class of the {state.selectedIds.size} selected marker
+                {state.selectedIds.size === 1 ? '' : 's'}. Changing class or moving a marker also confirms it.
               </div>
               <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-2.5 py-2 text-[11px] text-slate-200/90">
                 <span>
@@ -89,7 +111,7 @@ export default function ImageToolOverlays() {
                       {confirmableSelectionCount === 1 ? '' : 's'}
                     </span>
                   </span>
-                  <ShortcutKey shortcut="C" compact />
+                  <ShortcutKey shortcut="Enter" compact />
                 </Button>
               ) : null}
             </div>
@@ -138,28 +160,45 @@ function FloatingActionButton({
   disabled = false,
   icon: Icon,
   label,
+  ariaLabel,
+  square = false,
+  tooltip,
   onClick,
 }: {
   active?: boolean
   disabled?: boolean
   icon?: React.ComponentType<{ className?: string }>
   label: string
+  ariaLabel?: string
+  /** Fixed-width button for one-letter labels. */
+  square?: boolean
+  /** Shown in a tooltip on hover/focus; needs an enclosing TooltipProvider. */
+  tooltip?: React.ReactNode
   onClick: () => void
 }) {
-  return (
+  const button = (
     <Button
       variant={active ? 'default' : 'outline'}
       size="sm"
       disabled={disabled}
+      aria-label={ariaLabel}
       onClick={onClick}
       className={[
         'h-9 gap-2 rounded-xl border-white/10 bg-slate-900/65 text-slate-50 shadow-none backdrop-blur-sm',
         'hover:bg-slate-800/90',
+        square ? 'w-9 justify-center px-0 font-semibold' : '',
         active ? 'border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90' : '',
       ].join(' ')}
     >
       {Icon ? <Icon className="size-3.5" /> : null}
       <span>{label}</span>
     </Button>
+  )
+  if (!tooltip) return button
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }
