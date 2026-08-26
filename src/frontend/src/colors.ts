@@ -1,3 +1,4 @@
+import { categoryOption, DEFAULT_CATEGORY } from './config'
 import type { Annotation, AnnotationCategory, AnnotationReviewStatus } from './types'
 
 export const REVIEW_STATUS_COLORS: Record<AnnotationReviewStatus, string> = {
@@ -5,10 +6,8 @@ export const REVIEW_STATUS_COLORS: Record<AnnotationReviewStatus, string> = {
   unconfirmed: '#F59E0B',
 }
 
-export const CATEGORY_COLORS: Record<'default' | 'bull' | 'spike' | 'ignored', string> = {
-  default: '#17B8FF',
-  bull: '#FF5D95',
-  spike: '#73E46F',
+/** Per-class colours live on ELK_CATEGORY_OPTIONS in config.ts; these are the non-class marker states. */
+export const MARKER_STATE_COLORS = {
   ignored: '#FF453A',
 }
 
@@ -30,23 +29,18 @@ export const SELECTION_COLOR = '#FACC15'
 export const SELECTION_FILL = 'rgba(250, 204, 21, 0.18)'
 
 export function markerColorFor(annotation: Annotation): string {
-  if (annotation.state === 'rejected') return CATEGORY_COLORS.ignored
+  if (annotation.state === 'rejected') return MARKER_STATE_COLORS.ignored
   if (annotation.reviewStatus === 'unconfirmed') return REVIEW_STATUS_COLORS.unconfirmed
-  if (annotation.category === 'bull') return CATEGORY_COLORS.bull
-  if (annotation.category === 'spike') return CATEGORY_COLORS.spike
-  return CATEGORY_COLORS.default
+  return categoryColorFor(annotation.category)
 }
 
 export function minimapMarkerColorFor(annotation: Annotation): string {
-  if (annotation.state === 'rejected') return CATEGORY_COLORS.ignored
+  if (annotation.state === 'rejected') return MARKER_STATE_COLORS.ignored
   if (annotation.reviewStatus === 'unconfirmed') return REVIEW_STATUS_COLORS.unconfirmed
-  if (annotation.category === 'bull') return CATEGORY_COLORS.bull
-  if (annotation.category === 'spike') return CATEGORY_COLORS.spike
-  return MINIMAP_DEFAULT_COLOR
+  if (annotation.category === DEFAULT_CATEGORY) return MINIMAP_DEFAULT_COLOR
+  return categoryColorFor(annotation.category)
 }
 
 export function categoryColorFor(category: AnnotationCategory): string {
-  if (category === 'bull') return CATEGORY_COLORS.bull
-  if (category === 'spike') return CATEGORY_COLORS.spike
-  return CATEGORY_COLORS.default
+  return categoryOption(category).color
 }

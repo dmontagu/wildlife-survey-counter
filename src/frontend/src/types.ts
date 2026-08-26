@@ -1,5 +1,7 @@
 export type AnnotationState = 'auto-detected' | 'confirmed' | 'rejected' | 'manually-added'
-export type AnnotationCategory = 'bull' | 'spike' | null
+export type AnnotationCategory = 'cow' | 'bull' | 'spike' | 'unclassified-antlerless' | 'unclassified'
+/** Per-class count fields shared by AnnotationSummary and RecentImageRecord (see ELK_CATEGORY_OPTIONS). */
+export type CategorySummaryKey = 'cows' | 'bulls' | 'spikes' | 'unclassifiedAntlerless' | 'unclassified'
 export type AnnotationReviewStatus = 'confirmed' | 'unconfirmed'
 export type MarkerVisibilityMode = 'visible' | 'dimmed' | 'hidden'
 
@@ -44,17 +46,16 @@ export interface AppState {
   redoStack: UndoEntry[]
 }
 
-export interface AnnotationSummary {
+export interface AnnotationSummary extends Record<CategorySummaryKey, number> {
+  /** Total across every class (everything that is not ignored). */
   counted: number
   ignored: number
-  bulls: number
-  spikes: number
   unconfirmed: number
 }
 
 export type RecentImagesSortMode = 'last-edited' | 'alphabetical'
 
-export interface RecentImageRecord {
+export interface RecentImageRecord extends Record<CategorySummaryKey, number> {
   id: string
   filename: string
   displayName: string | null
@@ -64,8 +65,6 @@ export interface RecentImageRecord {
   lastEditedAt: string
   counted: number
   ignored: number
-  bulls: number
-  spikes: number
 }
 
 export interface ServerImageRecord {

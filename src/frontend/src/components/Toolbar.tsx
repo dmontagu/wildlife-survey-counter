@@ -2,6 +2,7 @@ import { ChevronDownIcon, FolderOpenIcon, HomeIcon, PencilLineIcon } from 'lucid
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FEEDBACK_FORM_URL } from '../config'
+import { formatCountSummary } from '../lib/annotations'
 import { displayNameFor } from '../lib/image-names'
 import { useAppState, useDispatch } from '../state'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
@@ -284,9 +285,7 @@ function WorkspaceMenu({
                   <DropdownMenuItem key={record.id} onSelect={() => onOpenRecentImage(record)}>
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate">{displayNameFor(record)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
-                      </span>
+                      <span className="text-xs text-muted-foreground">{formatCountSummary(record)}</span>
                     </div>
                   </DropdownMenuItem>
                 ))}

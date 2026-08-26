@@ -1,6 +1,7 @@
 import { FolderOpenIcon, HistoryIcon, ImageIcon, PencilLineIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FEEDBACK_FORM_URL, UPDATES_FORM_ACTION, UPDATES_FORM_EMAIL_FIELD } from '../config'
+import { formatCountSummary } from '../lib/annotations'
 import { getBrowserImageFromBasePath, isBrowserImageBasePath } from '../lib/browser-images'
 import { displayNameFor, normalizeDisplayName } from '../lib/image-names'
 import type { RecentImageRecord, RecentImagesSortMode, ServerImageRecord } from '../types'
@@ -363,9 +364,7 @@ export default function WelcomeScreen({
                                 <p className="truncate text-sm font-medium text-foreground">
                                   {displayNameFor(record)}
                                 </p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {record.counted} counted, {record.bulls} bulls, {record.spikes} spikes
-                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">{formatCountSummary(record)}</p>
                                 <p className="mt-1 text-xs text-muted-foreground">
                                   {record.width} × {record.height}px
                                 </p>
