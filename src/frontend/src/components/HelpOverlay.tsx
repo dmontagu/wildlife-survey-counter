@@ -1,6 +1,7 @@
 import { ELK_CATEGORY_OPTIONS } from '../config'
 import { isMac, platformModifier } from '../platform'
 import { useAppState, useDispatch } from '../state'
+import BuildInfo from './BuildInfo'
 import { ShortcutSequence } from './ShortcutKey'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 
@@ -103,6 +104,10 @@ export default function HelpOverlay() {
               </div>
             </section>
           ))}
+        </div>
+
+        <div className="mt-1 flex justify-end border-t border-border pt-3">
+          <BuildInfo />
         </div>
       </DialogContent>
     </Dialog>

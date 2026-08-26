@@ -3,7 +3,6 @@ import { REVIEW_STATUS_COLORS } from '../colors'
 import { ELK_CATEGORY_OPTIONS } from '../config'
 import { summarizeAnnotations } from '../lib/annotations'
 import { useAppState } from '../state'
-import BuildInfo from './BuildInfo'
 import { Button } from './ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 
@@ -26,10 +25,7 @@ export default function StatusBar({
       <div className="border-t border-border bg-card/70 px-3 py-2 text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <span>Ready to label a new image.</span>
-          <div className="flex items-center gap-4">
-            <span>Recent work is saved in this browser.</span>
-            <BuildInfo />
-          </div>
+          <span>Recent work is saved in this browser.</span>
         </div>
       </div>
     )
@@ -60,7 +56,6 @@ export default function StatusBar({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <BuildInfo />
           <div className="flex items-center">
             <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-lg px-2.5 text-xs">
               <DownloadIcon className="size-3.5" />
