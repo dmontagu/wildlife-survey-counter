@@ -37,45 +37,50 @@ export default function StatusBar({
 
   return (
     <div className="border-t border-border bg-card/70 px-3 py-2 text-sm">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-5 gap-y-2">
-        <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
-        <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
-        {ELK_CATEGORY_OPTIONS.map((option) => (
-          <StatusChip
-            key={option.id}
-            badge={option.badge ?? undefined}
-            color={option.color}
-            label={option.label}
-            value={summary[option.summaryKey]}
-          />
-        ))}
-        <span className="text-muted-foreground tabular-nums">{state.selectedIds.size} selected</span>
-        <span className="text-muted-foreground tabular-nums">
-          {state.image.width} × {state.image.height}px
-        </span>
-        <div className="flex-1" />
-        <BuildInfo className="mr-1" />
-        <div className="flex items-center">
-          <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-lg px-2.5 text-xs">
-            <DownloadIcon className="size-3.5" />
-            Export Results
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="sm"
-                className="h-7 rounded-l-none rounded-r-lg border-l border-white/15 px-2 text-xs shadow-none hover:bg-primary/90"
-                aria-label="More export options"
-              >
-                <ChevronDownIcon className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onSelect={onExportAnnotatedImage}>Export Annotated Image</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onExportOriginalImage}>Export Original Image</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onExportJsonOnly}>Export JSON Only</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
+          <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
+          <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
+          {ELK_CATEGORY_OPTIONS.map((option) => (
+            <StatusChip
+              key={option.id}
+              badge={option.badge ?? undefined}
+              color={option.color}
+              label={option.label}
+              value={summary[option.summaryKey]}
+            />
+          ))}
+          <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+            {state.selectedIds.size} selected
+          </span>
+          <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+            {state.image.width} × {state.image.height}px
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <BuildInfo />
+          <div className="flex items-center">
+            <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-lg px-2.5 text-xs">
+              <DownloadIcon className="size-3.5" />
+              Export Results
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  className="h-7 rounded-l-none rounded-r-lg border-l border-white/15 px-2 text-xs shadow-none hover:bg-primary/90"
+                  aria-label="More export options"
+                >
+                  <ChevronDownIcon className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onSelect={onExportAnnotatedImage}>Export Annotated Image</DropdownMenuItem>
+                <DropdownMenuItem onSelect={onExportOriginalImage}>Export Original Image</DropdownMenuItem>
+                <DropdownMenuItem onSelect={onExportJsonOnly}>Export JSON Only</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </div>
@@ -95,7 +100,7 @@ function StatusChip({ badge, color, label, value }: { badge?: string; color: str
       ) : (
         <span className="size-2 rounded-full" style={{ backgroundColor: color }} />
       )}
-      <span className="text-muted-foreground">{label}</span>
+      <span className="whitespace-nowrap text-muted-foreground">{label}</span>
       <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </div>
   )
