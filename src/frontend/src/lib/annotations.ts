@@ -24,14 +24,20 @@ function normalizeBbox(value: unknown): [number, number, number, number] | null 
 /**
  * Resolve the class of a raw (possibly legacy) annotation. Older saves used `category: null` to mean cow,
  * so null/missing/unknown values fall back to the default class rather than being rejected.
+ *
+ * Order is most-specific-first, because the class names nest: "unclassified bull" contains "unclassified",
+ * "brow-tined bull" and "spike bull" both contain "bull". Testing the generic word first would swallow them.
  */
 function inferCategory(raw: Record<string, unknown>): AnnotationCategory {
   if (isAnnotationCategory(raw.category)) return raw.category
   const label = typeof raw.label === 'string' ? raw.label.toLowerCase().replace(/[-_]+/g, ' ') : ''
-  if (label.includes('unclassified antlerless')) return 'unclassified-antlerless'
-  if (label.includes('unclassified')) return 'unclassified'
-  if (label.includes('bull')) return 'bull'
+  if (label.includes('antlerless')) return 'unclassified-antlerless'
   if (label.includes('spike')) return 'spike'
+  if (label.includes('brow')) return 'brow-tined'
+  if (label.includes('bull')) return 'bull'
+  if (label.includes('calf') || label.includes('calves')) return 'calf'
+  if (label.includes('cow')) return 'cow'
+  if (label.includes('unclassified')) return 'unclassified'
   return DEFAULT_CATEGORY
 }
 
@@ -123,17 +129,26 @@ export function summarizeAnnotations(annotations: Annotation[]): AnnotationSumma
   )
 }
 
+/** How many classes the Recent Work line names before it collapses the rest into "+N more". */
+const SUMMARY_CLASS_LIMIT = 3
+
 /**
- * One-line count summary for the Recent Work lists, e.g. "12 counted, 3 bulls, 1 unclassified".
+ * One-line count summary for the Recent Work lists, e.g. "12 counted, 3 spike bulls, 1 unclassified".
  * The total always shows; individual classes (other than the default cow class) show only when non-zero.
+ * With seven classes the line can get long, so it names the largest few and counts the remainder — this is
+ * the landing page rather than a live surface, so ranking by size beats a stable palette order here.
  */
 export function formatCountSummary(counts: { counted: number } & Record<CategorySummaryKey, number>): string {
+  const present = ELK_CATEGORY_OPTIONS.filter(
+    (option) => option.id !== DEFAULT_CATEGORY && counts[option.summaryKey] > 0,
+  ).sort((a, b) => counts[b.summaryKey] - counts[a.summaryKey])
+
   const parts = [`${counts.counted} counted`]
-  for (const option of ELK_CATEGORY_OPTIONS) {
-    if (option.id === DEFAULT_CATEGORY) continue
-    const value = counts[option.summaryKey]
-    if (value > 0) parts.push(`${value} ${option.countLabel}`)
+  for (const option of present.slice(0, SUMMARY_CLASS_LIMIT)) {
+    parts.push(`${counts[option.summaryKey]} ${option.countLabel}`)
   }
+  const hidden = present.length - SUMMARY_CLASS_LIMIT
+  if (hidden > 0) parts.push(`+${hidden} more`)
   return parts.join(', ')
 }
 

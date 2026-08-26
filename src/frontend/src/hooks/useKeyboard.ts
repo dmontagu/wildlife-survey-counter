@@ -98,7 +98,7 @@ export function useKeyboard(
       }
 
       for (const option of ELK_CATEGORY_OPTIONS) {
-        if (matchesKey(e, [option.shortcut])) {
+        if (option.shortcut && matchesKey(e, [option.shortcut])) {
           dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
           return
         }

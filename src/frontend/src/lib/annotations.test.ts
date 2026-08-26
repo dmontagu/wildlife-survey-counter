@@ -105,12 +105,18 @@ describe('normalizeAnnotation legacy shapes', () => {
   })
 
   it('recovers the class from a label when the category field is missing', () => {
+    // The names nest, so the specific ones have to win over the generic word they contain.
     const cases: [string, string][] = [
       ['bull elk', 'bull'],
       ['Spike', 'spike'],
+      ['spike bull', 'spike'],
+      ['brow-tined bull', 'brow-tined'],
+      ['unclassified bull', 'bull'],
+      ['calf', 'calf'],
       ['unclassified_antlerless', 'unclassified-antlerless'],
       ['unclassified antlerless', 'unclassified-antlerless'],
       ['unclassified', 'unclassified'],
+      ['unclassified elk', 'unclassified'],
       ['elk', DEFAULT_CATEGORY],
     ]
 
@@ -120,7 +126,7 @@ describe('normalizeAnnotation legacy shapes', () => {
   })
 
   it('defaults an unknown class to cow rather than discarding the annotation', () => {
-    const result = normalizeAnnotation({ id: 1, x: 5, y: 6, category: 'calf' })
+    const result = normalizeAnnotation({ id: 1, x: 5, y: 6, category: 'moose' })
     expect(result).toMatchObject({ id: 1, x: 5, y: 6, category: DEFAULT_CATEGORY })
   })
 
@@ -217,6 +223,7 @@ describe('summarizeAnnotations', () => {
     ])
 
     expect(summary).toEqual({
+      ...emptyCategoryCounts(),
       counted: 5,
       ignored: 1,
       unconfirmed: 1,
@@ -249,8 +256,23 @@ describe('formatCountSummary', () => {
 
   it('appends only the classes that are actually present', () => {
     expect(formatCountSummary({ ...emptyCategoryCounts(), counted: 16, cows: 12, bulls: 3, unclassified: 1 })).toBe(
-      '16 counted, 3 bulls, 1 unclassified',
+      '16 counted, 3 unclassified bulls, 1 unclassified',
     )
+  })
+
+  it('names the largest few classes and counts the rest, so the line stays short', () => {
+    const line = formatCountSummary({
+      ...emptyCategoryCounts(),
+      counted: 40,
+      cows: 20,
+      calves: 8,
+      spikes: 6,
+      browTinedBulls: 4,
+      bulls: 1,
+      unclassified: 1,
+    })
+
+    expect(line).toBe('40 counted, 8 calves, 6 spike bulls, 4 brow-tined bulls, +2 more')
   })
 })
 

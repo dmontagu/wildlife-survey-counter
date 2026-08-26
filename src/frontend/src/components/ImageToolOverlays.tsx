@@ -1,6 +1,6 @@
 import { CheckIcon } from 'lucide-react'
-import { useMemo } from 'react'
-import { categoryOption, ELK_CATEGORY_OPTIONS } from '../config'
+import { Fragment, useMemo } from 'react'
+import { categoryOption, ELK_CATEGORY_OPTIONS, type LabelCategoryOption } from '../config'
 import { isIgnoredAnnotation } from '../lib/annotations'
 import { useAppState, useDispatch } from '../state'
 import ShortcutKey from './ShortcutKey'
@@ -40,6 +40,7 @@ export default function ImageToolOverlays() {
       <div className="pointer-events-auto absolute top-2 right-2 sm:top-3 sm:right-3">
         <OverlayPanel
           title="Class"
+          className="w-auto sm:w-80"
           hint={
             <span className="inline-flex items-center gap-1.5">
               <ShortcutKey shortcut="E" compact />
@@ -47,23 +48,28 @@ export default function ImageToolOverlays() {
             </span>
           }
         >
-          <div className="flex flex-wrap gap-1 sm:gap-1.5">
+          {/* One row of seven, split by a rule wherever the group changes: antlerless | bull | any. */}
+          <div className="flex flex-wrap items-center gap-1">
             <TooltipProvider delayDuration={150}>
-              {ELK_CATEGORY_OPTIONS.map((option) => (
-                <ClassButton
-                  key={option.id}
-                  active={displayCategory === option.id}
-                  label={option.shortLabel}
-                  ariaLabel={option.label}
-                  tooltip={`${option.label} (${option.shortcut.toUpperCase()})${option.hint ? ` — ${option.hint}` : ''}`}
-                  onClick={() => {
-                    if (selectionCount > 0) {
-                      dispatch({ type: 'SET_CATEGORY', ids: [...state.selectedIds], category: option.id })
-                      return
-                    }
-                    dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
-                  }}
-                />
+              {ELK_CATEGORY_OPTIONS.map((option, index) => (
+                <Fragment key={option.id}>
+                  {index > 0 && ELK_CATEGORY_OPTIONS[index - 1]!.group !== option.group ? (
+                    <span aria-hidden="true" className="mx-1 h-6 w-px shrink-0 bg-border" />
+                  ) : null}
+                  <ClassButton
+                    active={displayCategory === option.id}
+                    label={option.shortLabel}
+                    ariaLabel={option.label}
+                    tooltip={classTooltip(option)}
+                    onClick={() => {
+                      if (selectionCount > 0) {
+                        dispatch({ type: 'SET_CATEGORY', ids: [...state.selectedIds], category: option.id })
+                        return
+                      }
+                      dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+                    }}
+                  />
+                </Fragment>
               ))}
             </TooltipProvider>
           </div>
@@ -150,6 +156,11 @@ export function OverlayPanel({
   )
 }
 
+function classTooltip(option: LabelCategoryOption): string {
+  const key = option.shortcut ? ` (${option.shortcut.toUpperCase()})` : ''
+  return `${option.label}${key}${option.hint ? ` — ${option.hint}` : ''}`
+}
+
 function ClassButton({
   active,
   label,
@@ -172,7 +183,7 @@ function ClassButton({
           aria-label={ariaLabel}
           aria-pressed={active}
           onClick={onClick}
-          className="w-8 px-0 font-semibold sm:w-9"
+          className="w-8 px-0 font-semibold"
         >
           {label}
         </Button>

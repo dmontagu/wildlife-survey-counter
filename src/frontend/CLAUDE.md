@@ -31,7 +31,14 @@ Config: `components.json` in the frontend root.
   - Drag annotation = move, drag bbox handle = resize
   - Middle mouse drag = pan
   - Backspace = delete manual annotations, reject imported ones
-- **Config**: `src/config.ts` defines the keyboard shortcuts (`KEYS` — including `Enter`/`Shift+Enter` to confirm/unconfirm and `E`/`Shift+E` to cycle the class) and the `ELK_CATEGORY_OPTIONS` table (each class's colour, badge, and single-letter shortcut `C`/`B`/`S`/`A`/`U`), plus zoom bounds; click behavior lives in `Canvas.tsx`
+- **Config**: `src/config.ts` defines the keyboard shortcuts (`KEYS` — including `Enter`/`Shift+Enter` to confirm/unconfirm and `E`/`Shift+E` to cycle the class) and the `ELK_CATEGORY_OPTIONS` table, plus zoom bounds; click behavior lives in `Canvas.tsx`
+- **Classes**: `ELK_CATEGORY_OPTIONS` is the only place the class list is written down — each entry's colour,
+  badge, marker shape, group, and optional letter drives the palette, the shortcuts, the E-cycle, counts, the
+  status bar, the help overlay, and both export canvases. Don't spell the letters out anywhere else; the help
+  dialog is generated from the table. `shortcut` is optional on purpose: bare letters are a scarce namespace
+  shared with `KEYS`, and `config.test.ts` fails the build if a class letter collides with one of those bindings.
+  Marker shape carries certainty rather than identity — a plain dot or solid outline is a specific call, a dashed
+  ring means "unclassified" at that level
 - **Persistence**: localStorage saves/restores the current image, its annotations, and UI preferences across refreshes (prefix: `wsc:`); images opened from disk are stored as blobs in IndexedDB (`wsc-browser-images`, see `src/lib/browser-images.ts`)
 
 ## Path Aliases
@@ -98,7 +105,9 @@ ids as literals. If one of those tests fails, the change needs a migration — n
 
 The app is **dark only** (`<html class="dark">`; the `:root` tokens in `src/index.css` are the dark values). The look is
 deliberately quiet so the survey imagery reads: green-black sage ground, snow-white type, sage for chrome, and the
-marker colours (cyan/amber/pink/green, in `colors.ts` and `config.ts`) reserved for markers and the brand mark.
+marker colours (one per class in `config.ts`, plus the non-class states in `colors.ts`) reserved for markers and the
+brand mark. Amber, red, and yellow are spoken for by unconfirmed, rejected, and selection, so a new class colour has
+to come from the cool half of the wheel.
 
 - **Tokens only.** Palette, radius, and fonts live in `src/index.css`. Do not use raw Tailwind colours (`slate-*`,
   `white/10`, `amber-*`…) in components; the floating panels over the image use `bg-popover/85` + `border-border`

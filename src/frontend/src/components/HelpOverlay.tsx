@@ -36,8 +36,8 @@ const SHARED_GROUPS = [
         'With nothing selected, choose the class for new markers. With markers selected, apply the class to them, which also confirms them',
       ],
       ['E', 'Cycle the selected marker label, or set the class for the next new marker when nothing is selected'],
-      ...ELK_CATEGORY_OPTIONS.map(
-        (option) => [option.shortcut.toUpperCase(), `Set the class to ${option.label.toLowerCase()}`] as const,
+      ...ELK_CATEGORY_OPTIONS.filter((option) => option.shortcut).map(
+        (option) => [option.shortcut!.toUpperCase(), `Set the class to ${option.label.toLowerCase()}`] as const,
       ),
     ],
   },
