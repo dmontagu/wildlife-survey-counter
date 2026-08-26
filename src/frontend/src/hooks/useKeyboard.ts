@@ -1,6 +1,6 @@
 import type { Dispatch } from 'react'
 import { useEffect } from 'react'
-import { KEYS, nextCategory, previousCategory } from '../config'
+import { ELK_CATEGORY_OPTIONS, KEYS, nextCategory, previousCategory } from '../config'
 import type { Action, AnnotationCategory } from '../types'
 
 function normalizedKey(value: string): string {
@@ -39,13 +39,14 @@ export function useKeyboard(
         return
       }
 
-      if (matchesKey(e, KEYS.confirmSelection)) {
-        dispatch({ type: 'CONFIRM', ids: [] })
+      // Shift+Enter is checked first: the plain-Enter binding requires no modifiers, but keep the order obvious.
+      if (matchesKey(e, KEYS.unconfirmSelection)) {
+        dispatch({ type: 'UNCONFIRM', ids: [] })
         return
       }
 
-      if (matchesKey(e, KEYS.unconfirmSelection)) {
-        dispatch({ type: 'UNCONFIRM', ids: [] })
+      if (matchesKey(e, KEYS.confirmSelection)) {
+        dispatch({ type: 'CONFIRM', ids: [] })
         return
       }
 
@@ -94,6 +95,13 @@ export function useKeyboard(
         const category = e.shiftKey ? previousCategory(activeCategory) : nextCategory(activeCategory)
         dispatch({ type: 'SET_ACTIVE_CATEGORY', category })
         return
+      }
+
+      for (const option of ELK_CATEGORY_OPTIONS) {
+        if (matchesKey(e, [option.shortcut])) {
+          dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+          return
+        }
       }
     }
 

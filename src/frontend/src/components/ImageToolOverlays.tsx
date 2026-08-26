@@ -55,7 +55,7 @@ export default function ImageToolOverlays() {
                 label={option.shortLabel}
                 ariaLabel={option.label}
                 square
-                tooltip={option.hint ? `${option.label} — ${option.hint}` : option.label}
+                tooltip={`${option.label} (${option.shortcut.toUpperCase()})${option.hint ? ` — ${option.hint}` : ''}`}
                 onClick={() => {
                   if (state.selectedIds.size > 0) {
                     dispatch({
@@ -111,7 +111,7 @@ export default function ImageToolOverlays() {
                       {confirmableSelectionCount === 1 ? '' : 's'}
                     </span>
                   </span>
-                  <ShortcutKey shortcut="C" compact />
+                  <ShortcutKey shortcut="Enter" compact />
                 </Button>
               ) : null}
             </div>

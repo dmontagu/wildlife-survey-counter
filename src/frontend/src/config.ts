@@ -2,8 +2,8 @@ import type { AnnotationCategory, CategorySummaryKey } from './types'
 
 /** Keyboard shortcuts — consumed by useKeyboard.ts */
 export const KEYS = {
-  confirmSelection: ['c'],
-  unconfirmSelection: ['u'],
+  confirmSelection: { key: 'Enter' },
+  unconfirmSelection: { key: 'Enter', shift: true },
   deleteOrReject: ['Backspace', 'Delete'],
   undo: { key: 'z', meta: true },
   redo: { key: 'z', meta: true, shift: true },
@@ -12,7 +12,7 @@ export const KEYS = {
   cycleMarkerVisibility: ['v'],
   help: ['?'],
   cycleCategory: ['e'],
-  // Direct per-class shortcuts live on ELK_CATEGORY_OPTIONS[].shortcut below.
+  // Per-class shortcuts (C/B/S/A/U) live on ELK_CATEGORY_OPTIONS[].shortcut below.
 }
 
 /** Zoom speed bounds */
@@ -35,6 +35,8 @@ export interface LabelCategoryOption {
   label: string
   /** One-letter shorthand shown in the class palette; the selected class is spelled out next to it. */
   shortLabel: string
+  /** Keyboard shortcut (no modifier) — the same letter as shortLabel. */
+  shortcut: string
   /** Optional clarification shown after the name in the palette tooltip. */
   hint?: string
   /** Lowercase plural-ish noun used after a count ("3 bulls", "2 unclassified antlerless"). */
@@ -52,8 +54,8 @@ export interface LabelCategoryOption {
 export const DEFAULT_CATEGORY: AnnotationCategory = 'cow'
 
 /**
- * Single source of truth for elk classes. An entry here drives rendering, the E-cycle order, counts,
- * the status bar, and exports; adding a class also means widening `AnnotationCategory`
+ * Single source of truth for elk classes. An entry here drives rendering, keyboard shortcuts, the E-cycle
+ * order, counts, the status bar, the help overlay, and exports; adding a class also means widening `AnnotationCategory`
  * and `CategorySummaryKey` in types.ts — both are compile errors if missed.
  */
 export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
@@ -61,6 +63,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'cow',
     label: 'Cow',
     shortLabel: 'C',
+    shortcut: 'c',
     countLabel: 'cows',
     badge: null,
     indicator: 'none',
@@ -71,6 +74,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'bull',
     label: 'Bull',
     shortLabel: 'B',
+    shortcut: 'b',
     countLabel: 'bulls',
     badge: 'B',
     indicator: 'ring',
@@ -81,6 +85,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'spike',
     label: 'Spike',
     shortLabel: 'S',
+    shortcut: 's',
     countLabel: 'spikes',
     badge: 'S',
     indicator: 'diamond',
@@ -91,6 +96,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'unclassified-antlerless',
     label: 'Unclassified antlerless',
     shortLabel: 'A',
+    shortcut: 'a',
     hint: 'cow or calf — definitely not a bull or spike',
     countLabel: 'unclassified antlerless',
     badge: 'A',
@@ -102,6 +108,7 @@ export const ELK_CATEGORY_OPTIONS: readonly LabelCategoryOption[] = [
     id: 'unclassified',
     label: 'Unclassified',
     shortLabel: 'U',
+    shortcut: 'u',
     hint: 'an elk whose type could not be determined',
     countLabel: 'unclassified',
     badge: 'U',
