@@ -8,19 +8,21 @@ src/
     __init__.py
     server.py                   API routes, static file serving, SPA fallback
     detect.py                   Blob detection pipeline (threshold, morphology, shadow-aware NMS)
+    agent.py                    pydantic-ai detection agent — system prompt, tools, deps
+    sandbox.py                  Sandbox ABC + SubprocessSandbox (runs agent code in a work dir)
+    db.py                       aiosqlite storage for detection runs (create/list/get/update)
     config.py                   pydantic-settings (env prefix: WSC_)
-  frontend/                     React 19 + TypeScript annotation review UI (see src/frontend/CLAUDE.md)
-storage/                        All gitignored runtime data
+  frontend/                     React 19 + TypeScript labeling UI (see src/frontend/CLAUDE.md)
+storage/                        All gitignored runtime data (see storage/README.md)
   samples/                      Sample images (was data/)
   uploads/                      User uploads
+  sandbox/                      Per-run agent working directories
   models/                       Model weights
   output/                       Research output
-research/                       Experimental scripts — OWLv2, CountGD, HerdNet, Grounding DINO
-plans/                          Implementation plans, technical research notes
-project/                        Project-level reference docs (overview, branding, product strategy)
+  wsc.db                        SQLite database of agent detection runs
+research/                       Experimental scripts — blob, CountGD, HerdNet, Grounding DINO
+scripts/                        One-off evaluation / batch-annotation scripts (YOLO, SAHI, cross-validation)
 ```
-
-`project/` contains living documents about what the project is and who it's for. `plans/` contains tactical implementation details. See `project/overview.md` for the full project context.
 
 ## Running Locally
 
@@ -37,18 +39,22 @@ The frontend Vite config proxies `/api`, `/samples`, and `/uploads` to the backe
   Logfire token is configured — `LOGFIRE_TOKEN`, or a `.logfire/` credentials file from the Logfire CLI
   (`send_to_logfire='if-token-present'`); otherwise instrumentation is a no-op.
 - **Entry point**: `wildlife_counter.server:app` (or `python -m wildlife_counter.server`, which accepts
-  `--host`, `--port`, and `--reload`). Auto-reload is off by default — `make dev` and the dev Docker image
+  `--host`, `--port`, and `--reload`/`--no-reload`). Auto-reload is off by default — `make dev` and the dev Docker image
   pass `--reload`; production does not.
-- **Config**: `wildlife_counter.config.Settings` — env prefix `WSC_` (e.g., `WSC_SAMPLES_DIR`, `WSC_PORT`,
-  `WSC_RELOAD`)
+- **Config**: `wildlife_counter.config.Settings` — env prefix `WSC_`. Fields: `samples_dir`, `uploads_dir`, `frontend_dist_dir`, `db_path`, `sandbox_work_dir`, `detection_model`, `sandbox_timeout`, `max_tool_calls`, `port`, `host`, `reload` (so `WSC_SAMPLES_DIR`, `WSC_DB_PATH`, `WSC_SANDBOX_WORK_DIR`, `WSC_DETECTION_MODEL`, `WSC_SANDBOX_TIMEOUT`, `WSC_MAX_TOOL_CALLS`, `WSC_PORT`, `WSC_RELOAD`, …)
 - **Routes**:
   - `GET /api/health` — health check
   - `GET /api/images` — list available images from `storage/samples/` and `storage/uploads/`
-  - `POST /api/upload` — upload an image, returns `{filename, size}`
-  - `POST /api/detect/{filename}` — run blob detection, returns annotations array
+  - `POST /api/upload` — upload an image, returns `{filename, basePath, size}`
+  - `POST /api/detect/{filename}` — run blob detection, returns `{annotations, method, count}`
+  - `POST /api/agent-detect/{filename}` — run the detection agent, streams SSE (`start`, `text`, `tool_call`, `annotations`, `complete`, `error`)
+  - `GET /api/detections` — list detection runs (optional `?image=` filter)
+  - `GET /api/detections/{run_id}` — fetch one detection run
   - `GET /samples/*`, `GET /uploads/*` — static file serving for images
   - `GET /*` — SPA fallback (serves `src/frontend/dist/index.html`)
+- **Used by the UI**: only `GET /api/images`, and only in dev (`SHOW_DEV_SAMPLES`). `/api/upload`, `/api/detect`, `/api/agent-detect`, and `/api/detections` have no frontend caller today
 - **Detection**: `wildlife_counter.detect` implements blob detection tuned for dark-on-light aerial imagery. Key parameters: threshold (auto-estimated from brightness), area_min/max (scaled by image resolution), shadow-aware NMS
+- **Agent detection**: `wildlife_counter.agent` runs a pydantic-ai agent (`WSC_DETECTION_MODEL`, default `anthropic:claude-sonnet-5`) with `run_python` / `read_file` / `submit_annotations` tools against a `SubprocessSandbox` work dir; runs are recorded in SQLite via `wildlife_counter.db`
 
 ## Frontend
 
@@ -59,12 +65,13 @@ See `src/frontend/CLAUDE.md` for detailed frontend architecture. Key points:
 - Canvas-based rendering with RAF + dirty-flag optimization
 - State via React Context + useReducer with undo/redo patches
 - Modifier-key-driven interaction (no tool modes)
-- localStorage persistence for annotations (prefix: `wsc:`)
+- localStorage persistence for annotations, recent images, and UI preferences (prefix: `wsc:`); opened image files are stored as blobs in IndexedDB (`wsc-browser-images`), so the app works with no backend at all
+- Build-time flags: `VITE_SHOW_SAMPLE_IMAGES` (`src/frontend/src/config.ts` — set to `false` to hide the dev sample list, which is dev-only regardless), plus `VITE_BACKEND_URL`, `VITE_BASE_PATH`, and `VITE_APP_COMMIT_HASH` in `vite.config.ts`
 
 ## Dependencies
 
-- **Base** (in Docker): fastapi, logfire, numpy, opencv-python-headless, pillow, pydantic-settings, python-multipart, uvicorn
-- **ML optional** (`pip install .[ml]`): torch, transformers, ultralytics, sam2, etc. — only needed for research scripts, not for the deployed app
+- **Base**: aiosqlite, fastapi, logfire, numpy, opencv-python-headless, pillow, pydantic-ai, pydantic-settings, python-multipart, uvicorn
+- **ML optional** (`pip install .[ml]`): torch, transformers, ultralytics, sam2, etc. — needed by the `research/` and `scripts/` scripts, and by the code the detection agent runs in its sandbox; the labeling UI never needs them
 
 ## Docker & Deployment
 
@@ -111,8 +118,8 @@ Traefik dashboard: http://localhost:8080 (shows all running stacks).
 ## Key Design Decisions
 
 - **Point annotations** (not bounding boxes) — the counting ecosystem (HerdNet, LILA BC datasets) uses points
-- **Blob detection for demo** — no PyTorch needed, keeps Docker image small and fast
+- **Blob detection is dependency-light** — pure OpenCV + numpy, no PyTorch; the agent sandbox is where the optional ML extras get used
 - **ML deps are optional** — the heavy ML stack (torch, transformers, etc.) is in `[project.optional-dependencies.ml]`
-- **Confidence slider** with histogram is critical UX — different models produce different score ranges
+- **Confidence slider** with histogram — `ConfidenceSlider.tsx` exists but is not mounted anywhere today; it matters again once model detections feed the UI, because different models produce different score ranges
 - **pydantic-settings** for configuration — env-configurable paths, replaces hardcoded constants
 - **Logfire** for observability — instrument_fastapi + spans on detection pipeline
