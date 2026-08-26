@@ -184,73 +184,146 @@ export default function WelcomeScreen({
   const openFilePicker = useCallback(() => fileInputRef.current?.click(), [])
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-5 py-10 lg:px-8 lg:py-12">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[auto_1fr] lg:gap-x-16 lg:gap-y-10">
-          <section className="min-w-0 space-y-10 lg:col-start-1 lg:row-start-1">
-            <header className="space-y-3">
-              <div className="flex items-center gap-3">
-                <BrandMark className="size-9 shrink-0" title="Wildlife Survey Counter" />
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Wildlife Survey Counter
-                </h1>
+    <div className="min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
+      <div className="mx-auto h-full max-w-6xl px-5 lg:px-8">
+        {/* Below lg this is one scrolling column (masthead, recent work, then the footer text). At lg the two
+            columns scroll independently: the left wrapper becomes a real box, the right column is its own region. */}
+        <div className="flex flex-col gap-12 py-10 lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-16 lg:py-0">
+          <div className="contents lg:flex lg:min-h-0 lg:flex-col lg:gap-10 lg:overflow-y-auto lg:py-12 lg:pr-6">
+            <section className="order-1 min-w-0 space-y-10">
+              <header className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <BrandMark className="size-9 shrink-0" title="Wildlife Survey Counter" />
+                  <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    Wildlife Survey Counter
+                  </h1>
+                </div>
+                <p className="max-w-xl text-base leading-7 text-muted-foreground">
+                  Count elk in aerial survey photos. Mark each animal, classify it, and export the tally.
+                </p>
+              </header>
+
+              <div className="space-y-6">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  tabIndex={-1}
+                />
+                <button
+                  type="button"
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDragOver(true)
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={openFilePicker}
+                  className={[
+                    'block w-full cursor-pointer rounded-lg border border-dashed px-6 py-12 text-center outline-none transition-colors',
+                    'focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                    dragOver
+                      ? 'border-primary bg-primary/10'
+                      : 'border-muted-foreground/40 hover:border-primary/70 hover:bg-card',
+                  ].join(' ')}
+                >
+                  {uploading ? (
+                    <span className="block space-y-3">
+                      <span className="mx-auto block size-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                      <span className="block text-sm text-muted-foreground">Preparing your image…</span>
+                    </span>
+                  ) : (
+                    <span className="block space-y-1">
+                      <span className="block text-base font-medium text-foreground">Drop a survey photo here</span>
+                      <span className="block text-sm text-muted-foreground">or click to browse this computer</span>
+                    </span>
+                  )}
+                </button>
+
+                <ol className="space-y-2 text-sm leading-6 text-muted-foreground">
+                  {QUICK_STEPS.map((step, index) => (
+                    <li key={step} className="flex gap-4">
+                      <span className="w-4 shrink-0 text-right font-medium text-primary tabular-nums">
+                        {index + 1}
+                      </span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-              <p className="max-w-xl text-base leading-7 text-muted-foreground">
-                Count elk in aerial survey photos. Mark each animal, classify it, and export the tally.
-              </p>
-            </header>
+            </section>
 
-            <div className="space-y-6">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-                tabIndex={-1}
-              />
-              <button
-                type="button"
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setDragOver(true)
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={openFilePicker}
-                className={[
-                  'block w-full cursor-pointer rounded-lg border border-dashed px-6 py-12 text-center outline-none transition-colors',
-                  'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                  dragOver
-                    ? 'border-primary bg-primary/10'
-                    : 'border-muted-foreground/40 hover:border-primary/70 hover:bg-card',
-                ].join(' ')}
-              >
-                {uploading ? (
-                  <span className="block space-y-3">
-                    <span className="mx-auto block size-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                    <span className="block text-sm text-muted-foreground">Preparing your image…</span>
-                  </span>
-                ) : (
-                  <span className="block space-y-1">
-                    <span className="block text-base font-medium text-foreground">Drop a survey photo here</span>
-                    <span className="block text-sm text-muted-foreground">or click to browse this computer</span>
-                  </span>
-                )}
-              </button>
+            <div className="order-3 min-w-0 space-y-8">
+              <section className="space-y-2 border-t border-border pt-8 text-sm leading-6 text-muted-foreground">
+                <h2 className="font-semibold text-foreground">Your work stays in this browser</h2>
+                <p>
+                  Photos and counts are saved in this browser only. They stay private to this device and are not
+                  visible on the internet.
+                </p>
+                <p>
+                  Clearing browser storage, switching browsers, or losing this device can lose saved work, so export
+                  the JSON when a count matters. If any of this changes, this page will say so clearly.
+                </p>
+              </section>
 
-              <ol className="space-y-2 text-sm leading-6 text-muted-foreground">
-                {QUICK_STEPS.map((step, index) => (
-                  <li key={step} className="flex gap-4">
-                    <span className="w-4 shrink-0 text-right font-medium text-primary tabular-nums">{index + 1}</span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ol>
+              <footer className="space-y-4 border-t border-border pt-8 text-sm leading-6 text-muted-foreground">
+                <p>
+                  I’m David Montague, a developer in Bozeman, Montana, and I build and maintain this tool. If it’s
+                  useful to you, or if something gets in your way, I’d like to hear about it:{' '}
+                  <a href={`mailto:${CONTACT_EMAIL}`} className={LINK_CLASS}>
+                    email me
+                  </a>{' '}
+                  or{' '}
+                  <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer" className={LINK_CLASS}>
+                    send feedback
+                  </a>
+                  .
+                </p>
+
+                <form
+                  action={UPDATES_FORM_ACTION}
+                  method="post"
+                  target="updates-signup-target"
+                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                  onSubmit={() => {
+                    setUpdatesSubmitted(true)
+                    setUpdatesEmail('')
+                  }}
+                >
+                  <label htmlFor="home-notify-email" className="shrink-0">
+                    Get an email when the tool changes
+                  </label>
+                  <Input
+                    id="home-notify-email"
+                    type="email"
+                    name={UPDATES_FORM_EMAIL_FIELD}
+                    autoComplete="email"
+                    required
+                    placeholder="you@example.gov"
+                    value={updatesEmail}
+                    onChange={(event) => {
+                      setUpdatesEmail(event.target.value)
+                      if (updatesSubmitted) setUpdatesSubmitted(false)
+                    }}
+                    className="h-8 sm:max-w-64"
+                  />
+                  <input type="hidden" name="fvv" value="1" />
+                  <input type="hidden" name="pageHistory" value="0" />
+                  <Button type="submit" variant="outline" size="sm" className="sm:shrink-0">
+                    Notify me
+                  </Button>
+                </form>
+                <iframe title="Signup form submission target" name="updates-signup-target" className="hidden" />
+                {updatesSubmitted ? (
+                  <p className="text-xs text-primary">Thanks — this address is only used for tool updates.</p>
+                ) : null}
+              </footer>
             </div>
-          </section>
+          </div>
 
-          <aside className="min-w-0 space-y-10 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <aside className="order-2 min-w-0 space-y-10 lg:min-h-0 lg:overflow-y-auto lg:py-12">
             <section className="space-y-3">
               <div className="flex items-baseline justify-between gap-3">
                 <h2 className="text-sm font-semibold text-foreground">Recent work</h2>
@@ -277,7 +350,7 @@ export default function WelcomeScreen({
 
               {recentImages.length > 0 ? (
                 <div className="space-y-3">
-                  <ul className="max-h-[40rem] divide-y divide-border overflow-y-auto border-y border-border">
+                  <ul className="divide-y divide-border border-y border-border">
                     {recentImages.map((record) => (
                       <RecentWorkRow
                         key={record.id}
@@ -317,73 +390,6 @@ export default function WelcomeScreen({
               </section>
             )}
           </aside>
-
-          <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
-            <section className="space-y-2 border-t border-border pt-8 text-sm leading-6 text-muted-foreground">
-              <h2 className="font-semibold text-foreground">Your work stays in this browser</h2>
-              <p>
-                Photos and counts are saved in this browser only. They stay private to this device and are not visible
-                on the internet.
-              </p>
-              <p>
-                Clearing browser storage, switching browsers, or losing this device can lose saved work, so export the
-                JSON when a count matters. If any of this changes, this page will say so clearly.
-              </p>
-            </section>
-
-            <footer className="space-y-4 border-t border-border pt-8 text-sm leading-6 text-muted-foreground">
-              <p>
-                I’m David Montague, a developer in Bozeman, Montana, and I build and maintain this tool. If it’s useful
-                to you, or if something gets in your way, I’d like to hear about it:{' '}
-                <a href={`mailto:${CONTACT_EMAIL}`} className={LINK_CLASS}>
-                  email me
-                </a>{' '}
-                or{' '}
-                <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer" className={LINK_CLASS}>
-                  send feedback
-                </a>
-                .
-              </p>
-
-              <form
-                action={UPDATES_FORM_ACTION}
-                method="post"
-                target="updates-signup-target"
-                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
-                onSubmit={() => {
-                  setUpdatesSubmitted(true)
-                  setUpdatesEmail('')
-                }}
-              >
-                <label htmlFor="home-notify-email" className="shrink-0">
-                  Get an email when the tool changes
-                </label>
-                <Input
-                  id="home-notify-email"
-                  type="email"
-                  name={UPDATES_FORM_EMAIL_FIELD}
-                  autoComplete="email"
-                  required
-                  placeholder="you@example.gov"
-                  value={updatesEmail}
-                  onChange={(event) => {
-                    setUpdatesEmail(event.target.value)
-                    if (updatesSubmitted) setUpdatesSubmitted(false)
-                  }}
-                  className="h-8 sm:max-w-64"
-                />
-                <input type="hidden" name="fvv" value="1" />
-                <input type="hidden" name="pageHistory" value="0" />
-                <Button type="submit" variant="outline" size="sm" className="sm:shrink-0">
-                  Notify me
-                </Button>
-              </form>
-              <iframe title="Signup form submission target" name="updates-signup-target" className="hidden" />
-              {updatesSubmitted ? (
-                <p className="text-xs text-primary">Thanks — this address is only used for tool updates.</p>
-              ) : null}
-            </footer>
-          </div>
         </div>
       </div>
 
