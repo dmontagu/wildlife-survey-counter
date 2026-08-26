@@ -97,7 +97,7 @@ export default function HelpOverlay() {
                 {group.items.map(([shortcut, description]) => (
                   <div key={`${group.title}-${shortcut}`} className="flex flex-col gap-1 py-2">
                     <dt>
-                      <ShortcutSequence shortcut={shortcut} compact />
+                      <ShortcutSequence shortcut={shortcut} compact responsive={false} />
                     </dt>
                     <dd className="text-sm leading-5 text-muted-foreground">{description}</dd>
                   </div>

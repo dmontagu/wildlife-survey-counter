@@ -37,7 +37,7 @@ export default function ImageToolOverlays() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
-      <div className="pointer-events-auto absolute top-3 right-3">
+      <div className="pointer-events-auto absolute top-2 right-2 sm:top-3 sm:right-3">
         <OverlayPanel
           title="Class"
           hint={
@@ -47,7 +47,7 @@ export default function ImageToolOverlays() {
             </span>
           }
         >
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1 sm:gap-1.5">
             <TooltipProvider delayDuration={150}>
               {ELK_CATEGORY_OPTIONS.map((option) => (
                 <ClassButton
@@ -68,7 +68,7 @@ export default function ImageToolOverlays() {
             </TooltipProvider>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
             {displayOption ? (
               <>
                 <span
@@ -85,12 +85,18 @@ export default function ImageToolOverlays() {
           </div>
 
           {selectionCount > 0 ? (
-            <div className="space-y-2 border-t border-border pt-2 text-xs text-muted-foreground">
-              <p className="leading-5">
+            <div
+              className={[
+                'space-y-2 border-t border-border pt-1.5 text-xs text-muted-foreground sm:pt-2',
+                // On narrow viewports only the Confirm button survives, so skip the block when it has nothing to show.
+                confirmableSelectionCount > 0 ? '' : 'hidden sm:block',
+              ].join(' ')}
+            >
+              <p className="hidden leading-5 sm:block">
                 Picking a class applies it to the {selectionCount} selected marker{selectionCount === 1 ? '' : 's'} and
                 confirms {selectionCount === 1 ? 'it' : 'them'}.
               </p>
-              <div className="flex items-center justify-between gap-3">
+              <div className="hidden items-center justify-between gap-3 sm:flex">
                 <span>Delete selected</span>
                 <ShortcutKey shortcut="Backspace" compact />
               </div>
@@ -120,7 +126,7 @@ export default function ImageToolOverlays() {
 export function OverlayPanel({
   title,
   hint,
-  className = 'w-72',
+  className = 'w-auto sm:w-72',
   children,
 }: {
   title: string
@@ -132,10 +138,10 @@ export function OverlayPanel({
     <section
       className={[
         className,
-        'max-w-[calc(100vw-1.5rem)] space-y-2 rounded-lg border border-border bg-popover/85 p-3 shadow-md backdrop-blur-md',
+        'max-w-[calc(100vw-1rem)] space-y-1.5 rounded-lg border border-border bg-popover/85 p-1.5 shadow-md backdrop-blur-md sm:space-y-2 sm:p-3',
       ].join(' ')}
     >
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="hidden items-baseline justify-between gap-3 sm:flex">
         <h2 className="text-xs font-semibold text-foreground">{title}</h2>
         {hint ? <div className="text-xs text-muted-foreground">{hint}</div> : null}
       </div>
@@ -166,7 +172,7 @@ function ClassButton({
           aria-label={ariaLabel}
           aria-pressed={active}
           onClick={onClick}
-          className="w-9 px-0 font-semibold"
+          className="w-8 px-0 font-semibold sm:w-9"
         >
           {label}
         </Button>

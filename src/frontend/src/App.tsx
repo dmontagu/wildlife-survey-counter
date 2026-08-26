@@ -1073,9 +1073,9 @@ function WorkspaceHint({
   onRedo: () => void
 }) {
   return (
-    <div className="border-b border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground">
+    <div className="border-b border-border bg-card/60 px-3 py-1.5 text-sm text-muted-foreground sm:py-2">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
-        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+        <span className="hidden flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex">
           <span>Drag empty space to pan</span>
           <span aria-hidden="true">·</span>
           <ShortcutSequence shortcut={isMac ? `${platformModifier}+Scroll` : 'Scroll'} compact />
@@ -1085,7 +1085,7 @@ function WorkspaceHint({
           <span>for help</span>
         </span>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full items-center gap-1.5 sm:w-auto sm:gap-2">
           <WorkspaceEditButton
             disabled={!canRemove}
             icon={Trash2Icon}
@@ -1127,13 +1127,7 @@ function WorkspaceEditButton({
   onClick: () => void
 }) {
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={disabled}
-      onClick={onClick}
-      className="gap-2 text-muted-foreground hover:text-foreground"
-    >
+    <Button variant="outline" size="sm" disabled={disabled} onClick={onClick} className="flex-1 gap-2 sm:flex-none">
       <Icon className="size-3.5" />
       <span>{label}</span>
       {shortcut.includes('+') ? (

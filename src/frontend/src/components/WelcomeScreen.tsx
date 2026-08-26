@@ -478,6 +478,7 @@ function RecentWorkRow({
 }) {
   const name = displayNameFor(record)
   const edited = new Date(record.lastEditedAt)
+  const [previewFailed, setPreviewFailed] = useState(false)
 
   return (
     <li className="flex items-center gap-2 py-3">
@@ -488,8 +489,15 @@ function RecentWorkRow({
         className="group flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <span className="relative h-11 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
-          {previewUrl ? (
-            <img src={previewUrl} alt="" className="h-full w-full object-cover" loading="lazy" draggable={false} />
+          {previewUrl && !previewFailed ? (
+            <img
+              src={previewUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+              draggable={false}
+              onError={() => setPreviewFailed(true)}
+            />
           ) : (
             <ImageIcon className="absolute inset-0 m-auto size-4 text-muted-foreground/60" />
           )}
