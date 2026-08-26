@@ -1,6 +1,8 @@
 interface ShortcutKeyProps {
   shortcut: string
   compact?: boolean
+  /** Hide below the `sm` breakpoint (phones have no keyboard). The Help dialog opts out. */
+  responsive?: boolean
 }
 
 const SHORTCUT_LABELS: Record<string, string> = {
@@ -20,14 +22,15 @@ function normalizeShortcutLabel(shortcut: string): string {
   return mapped.length === 1 && /[a-z]/i.test(mapped) ? mapped.toUpperCase() : mapped
 }
 
-export default function ShortcutKey({ shortcut, compact = false }: ShortcutKeyProps) {
+export default function ShortcutKey({ shortcut, compact = false, responsive = true }: ShortcutKeyProps) {
   const label = normalizeShortcutLabel(shortcut)
   const isSingleCharacter = label.length === 1
 
   return (
     <kbd
       className={[
-        'inline-flex h-5 items-center justify-center whitespace-nowrap rounded-md border border-border/80 bg-background/80 px-1.5 text-[10px] font-semibold leading-none tracking-[0.04em] text-muted-foreground shadow-sm',
+        'h-5 items-center justify-center whitespace-nowrap rounded-[4px] border border-border bg-background/80 px-1.5 font-mono text-[11px] font-medium leading-none text-muted-foreground',
+        responsive ? 'hidden sm:inline-flex' : 'inline-flex',
         compact ? (isSingleCharacter ? 'min-w-5' : '') : isSingleCharacter ? 'min-w-6' : '',
       ].join(' ')}
     >
@@ -36,18 +39,18 @@ export default function ShortcutKey({ shortcut, compact = false }: ShortcutKeyPr
   )
 }
 
-export function ShortcutSequence({ shortcut, compact = false }: ShortcutKeyProps) {
+export function ShortcutSequence({ shortcut, compact = false, responsive = true }: ShortcutKeyProps) {
   const parts = shortcut
     .split('+')
     .map((part) => part.trim())
     .filter(Boolean)
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className={responsive ? 'hidden items-center gap-1 sm:inline-flex' : 'inline-flex items-center gap-1'}>
       {parts.map((part, index) => (
         <span key={`${shortcut}-${part}-${index}`} className="inline-flex items-center gap-1">
-          {index > 0 ? <span className="text-[10px] font-semibold text-muted-foreground/80">+</span> : null}
-          <ShortcutKey shortcut={part} compact={compact} />
+          {index > 0 ? <span className="text-[11px] text-muted-foreground/80">+</span> : null}
+          <ShortcutKey shortcut={part} compact={compact} responsive={responsive} />
         </span>
       ))}
     </span>

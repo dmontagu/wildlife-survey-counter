@@ -13,7 +13,7 @@ npx shadcn@latest add <component> --yes --overwrite
 ```
 **Do not hand-write shadcn components.** Always use the CLI so they get proper styling, animations, and the correct `radix-ui` imports.
 
-Currently installed: `button`, `dialog`, `dropdown-menu`, `tooltip`
+Currently installed: `button`, `dialog`, `dropdown-menu`, `input`, `tooltip`, `tooltip`
 
 Config: `components.json` in the frontend root.
 
@@ -52,3 +52,26 @@ The backend is a Python server (`src/wildlife_counter/server.py`) that serves im
 - Colors for annotation states are defined in `src/colors.ts`
 - The canvas is the only place raw DOM drawing happens — everything else is React + Tailwind
 - Use shadcn semantic color tokens (`bg-background`, `text-foreground`, `border`, `text-muted-foreground`, etc.) not raw colors in components
+
+## Styling Conventions
+
+The app is **dark only** (`<html class="dark">`; the `:root` tokens in `src/index.css` are the dark values). The look is
+deliberately quiet so the survey imagery reads: green-black sage ground, snow-white type, sage for chrome, and the
+marker colours (cyan/amber/pink/green, in `colors.ts` and `config.ts`) reserved for markers and the brand mark.
+
+- **Tokens only.** Palette, radius, and fonts live in `src/index.css`. Do not use raw Tailwind colours (`slate-*`,
+  `white/10`, `amber-*`…) in components; the floating panels over the image use `bg-popover/85` + `border-border`
+  through `OverlayPanel` in `ImageToolOverlays.tsx`.
+- **Amber means "unconfirmed".** `--unconfirmed` / `bg-unconfirmed` is only for the unconfirmed marker state and
+  controls that act on it. Notices, warnings, and emphasis use the neutral tokens.
+- **One radius.** `rounded-md`/`rounded-lg` (from `--radius`) and `rounded-full`. No `rounded-xl`/`2xl`.
+- **Type.** Public Sans (self-hosted via `@fontsource-variable/public-sans`), with `font-mono` for `<kbd>` and the
+  build hash. Scale: `text-xs` for metadata and hints, `text-sm` for UI, `text-base` for lead copy, `text-3xl`+ for
+  the masthead. Avoid `text-[10px]`/`text-[11px]` and uppercase-tracked eyebrow labels; section headings are
+  `text-sm font-semibold` in normal case.
+- **Hierarchy from space and rules, not boxes.** Prefer `border-t`/`divide-y` and whitespace over nested bordered
+  cards. The dashed drop zone is the only bordered block on the landing page.
+- **Contrast.** Primary buttons are sage with dark text (`--primary-foreground`); white text on the sage fails AA.
+- **Instructions are not furniture.** Put how-to copy in the Help dialog or a tooltip, not in always-visible panels.
+- Dialog/tooltip animations come from `tw-animate-css` (imported in `index.css`); `prefers-reduced-motion` disables
+  them globally.

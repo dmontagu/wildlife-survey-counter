@@ -24,17 +24,16 @@ export default function StatusBar({
     return (
       <div className="border-t border-border bg-card/70 px-3 py-2 text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <span>Ready to label a new image.</span>
-          <span>Recent work is saved in this browser.</span>
+          <span>Work is saved in this browser only.</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="border-t border-border bg-card/70 px-3 py-2 text-sm">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
+    <div className="border-t border-border bg-card/70 px-3 py-1.5 text-sm sm:py-2">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-1.5 sm:gap-y-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-5 sm:gap-y-2">
           <StatusChip badge="All" color="#F5F5F0" label="Total Counted" value={summary.counted} />
           {summary.unconfirmed > 0 ? (
             <StatusChip color={REVIEW_STATUS_COLORS.unconfirmed} label="Unconfirmed" value={summary.unconfirmed} />
@@ -51,13 +50,17 @@ export default function StatusBar({
           <span className="whitespace-nowrap text-muted-foreground tabular-nums">
             {state.selectedIds.size} selected
           </span>
-          <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+          <span className="hidden whitespace-nowrap text-muted-foreground tabular-nums sm:inline">
             {state.image.width} × {state.image.height}px
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <div className="flex items-center">
-            <Button size="sm" onClick={onExportResults} className="h-7 rounded-r-none rounded-l-lg px-2.5 text-xs">
+        <div className="flex w-full shrink-0 items-center gap-3 sm:w-auto">
+          <div className="flex w-full items-center sm:w-auto">
+            <Button
+              size="sm"
+              onClick={onExportResults}
+              className="h-7 flex-1 rounded-r-none rounded-l-md px-2.5 text-xs sm:flex-none"
+            >
               <DownloadIcon className="size-3.5" />
               Export Results
             </Button>
@@ -65,7 +68,7 @@ export default function StatusBar({
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
-                  className="h-7 rounded-l-none rounded-r-lg border-l border-white/15 px-2 text-xs shadow-none hover:bg-primary/90"
+                  className="h-7 rounded-l-none rounded-r-md border-l border-primary-foreground/20 px-2 text-xs shadow-none hover:bg-primary/90"
                   aria-label="More export options"
                 >
                   <ChevronDownIcon className="size-3.5" />
@@ -86,7 +89,7 @@ export default function StatusBar({
 
 function StatusChip({ badge, color, label, value }: { badge?: string; color: string; label: string; value: number }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2">
       {badge ? (
         <span
           className="inline-flex h-4 min-w-4 items-center justify-center rounded border px-1 text-[10px] font-semibold leading-none"
@@ -97,7 +100,7 @@ function StatusChip({ badge, color, label, value }: { badge?: string; color: str
       ) : (
         <span className="size-2 rounded-full" style={{ backgroundColor: color }} />
       )}
-      <span className="whitespace-nowrap text-muted-foreground">{label}</span>
+      <span className="hidden whitespace-nowrap text-muted-foreground sm:inline">{label}</span>
       <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </div>
   )

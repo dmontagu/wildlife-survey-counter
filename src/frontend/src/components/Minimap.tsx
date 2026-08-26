@@ -4,10 +4,8 @@ import { MARKER_HALO_COLOR, minimapMarkerColorFor, SELECTION_COLOR } from '../co
 import { MAX_ZOOM_SPEED, MIN_ZOOM_SPEED } from '../config'
 import type { ViewportActions } from '../hooks/useViewport'
 import { isIgnoredAnnotation } from '../lib/annotations'
-import { isMac, platformModifier } from '../platform'
 import { useAppState, useDispatch } from '../state'
 import type { Annotation, MarkerVisibilityMode } from '../types'
-import { ShortcutSequence } from './ShortcutKey'
 
 interface MinimapProps {
   vp: ViewportActions
@@ -215,8 +213,6 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
 
   if (!state.image) return null
 
-  const zoomShortcut = isMac ? `${platformModifier}+Scroll` : 'Scroll'
-
   const adjustZoomSpeed = (delta: number) => {
     const next = Math.max(MIN_ZOOM_SPEED, Math.min(MAX_ZOOM_SPEED, Math.round((state.zoomSpeed + delta) * 100) / 100))
     dispatch({ type: 'SET_ZOOM_SPEED', speed: next })
@@ -224,12 +220,10 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
 
   return (
     <div className="pointer-events-none absolute right-3 bottom-3 hidden flex-col items-end gap-2 lg:flex">
-      <div className="pointer-events-auto relative overflow-hidden rounded-md border border-border shadow-lg">
-        <div className="pointer-events-none absolute top-2 left-2 z-10 rounded-full border border-white/8 bg-slate-950/28 px-2.5 py-1 text-[11px] font-medium text-slate-100 shadow-md">
-          <div className="flex items-center gap-1.5">
-            <ZoomInIcon className="size-3" />
-            <span>{zoomLevel < 1 ? `${(zoomLevel * 100).toFixed(0)}%` : `${zoomLevel.toFixed(1)}x`}</span>
-          </div>
+      <div className="pointer-events-auto relative overflow-hidden rounded-lg border border-border shadow-md">
+        <div className="pointer-events-none absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full border border-border bg-popover/75 px-2 py-0.5 text-xs font-medium text-foreground tabular-nums backdrop-blur-sm">
+          <ZoomInIcon className="size-3" />
+          <span>{zoomLevel < 1 ? `${(zoomLevel * 100).toFixed(0)}%` : `${zoomLevel.toFixed(1)}x`}</span>
         </div>
         <canvas
           ref={canvasRef}
@@ -239,48 +233,61 @@ export default function Minimap({ vp, canvasWidth, canvasHeight, zoomLevel }: Mi
           className="block cursor-pointer"
         />
       </div>
-      <div className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/78 px-3 py-2 text-[11px] font-medium text-slate-100 shadow-lg backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/62">
-        <div className="min-w-0 space-y-1">
-          <div className="text-slate-100">Drag empty space to pan</div>
-          <div className="flex items-center gap-1.5 text-slate-300/85">
-            <ShortcutSequence shortcut={zoomShortcut} compact />
-            <span>zoom</span>
-            <span aria-hidden="true">•</span>
-            <span>Click minimap to jump</span>
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="text-[10px] uppercase tracking-[0.14em] text-slate-300/75">Zoom speed</span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => adjustZoomSpeed(-0.25)}
-              disabled={state.zoomSpeed <= MIN_ZOOM_SPEED}
-              className="rounded-lg bg-white/4 px-2 py-1 text-slate-200 transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Decrease wheel sensitivity"
-            >
-              -
-            </button>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'SET_ZOOM_SPEED', speed: 1 })}
-              className="rounded-lg bg-white/4 px-2 py-1 text-slate-200 transition-colors hover:bg-white/8"
-              aria-label="Reset zoom speed"
-            >
-              {state.zoomSpeed.toFixed(2)}x
-            </button>
-            <button
-              type="button"
-              onClick={() => adjustZoomSpeed(0.25)}
-              disabled={state.zoomSpeed >= MAX_ZOOM_SPEED}
-              className="rounded-lg bg-white/4 px-2 py-1 text-slate-200 transition-colors hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Increase wheel sensitivity"
-            >
-              +
-            </button>
-          </div>
+      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-popover/85 py-1 pr-1 pl-2.5 text-xs shadow-md backdrop-blur-md">
+        <span className="text-muted-foreground">Zoom speed</span>
+        <div className="flex items-center gap-0.5">
+          <ZoomSpeedButton
+            onClick={() => adjustZoomSpeed(-0.25)}
+            disabled={state.zoomSpeed <= MIN_ZOOM_SPEED}
+            label="Decrease wheel sensitivity"
+          >
+            −
+          </ZoomSpeedButton>
+          <ZoomSpeedButton
+            onClick={() => dispatch({ type: 'SET_ZOOM_SPEED', speed: 1 })}
+            label="Reset zoom speed"
+            className="tabular-nums"
+          >
+            {state.zoomSpeed.toFixed(2)}x
+          </ZoomSpeedButton>
+          <ZoomSpeedButton
+            onClick={() => adjustZoomSpeed(0.25)}
+            disabled={state.zoomSpeed >= MAX_ZOOM_SPEED}
+            label="Increase wheel sensitivity"
+          >
+            +
+          </ZoomSpeedButton>
         </div>
       </div>
     </div>
+  )
+}
+
+function ZoomSpeedButton({
+  children,
+  className = '',
+  disabled = false,
+  label,
+  onClick,
+}: {
+  children: React.ReactNode
+  className?: string
+  disabled?: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={[
+        'rounded-md px-2 py-1 font-medium text-foreground/85 transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40',
+        className,
+      ].join(' ')}
+    >
+      {children}
+    </button>
   )
 }

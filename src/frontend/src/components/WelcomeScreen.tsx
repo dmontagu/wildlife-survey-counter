@@ -1,13 +1,29 @@
-import { FolderOpenIcon, HistoryIcon, ImageIcon, PencilLineIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
+import { ImageIcon, MoreHorizontalIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FEEDBACK_FORM_URL, UPDATES_FORM_ACTION, UPDATES_FORM_EMAIL_FIELD } from '../config'
-import { formatCountSummary } from '../lib/annotations'
+import {
+  CONTACT_EMAIL,
+  categoryOption,
+  DEFAULT_CATEGORY,
+  ELK_CATEGORY_OPTIONS,
+  FEEDBACK_FORM_URL,
+  UPDATES_FORM_ACTION,
+  UPDATES_FORM_EMAIL_FIELD,
+} from '../config'
 import { getBrowserImageFromBasePath, isBrowserImageBasePath } from '../lib/browser-images'
+import { formatRelativeTime } from '../lib/format-time'
 import { displayNameFor, normalizeDisplayName } from '../lib/image-names'
 import type { RecentImageRecord, RecentImagesSortMode, ServerImageRecord } from '../types'
 import BrandMark from './BrandMark'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
+import { Input } from './ui/input'
 
 interface WelcomeScreenProps {
   notice?: string | null
@@ -24,11 +40,31 @@ interface WelcomeScreenProps {
   onOpenSampleImage: (record: ServerImageRecord) => void
 }
 
+/** Numbered because it really is a sequence: the order is the workflow. */
 const QUICK_STEPS = [
-  'Open a survey photo or drag one into the page.',
-  'Click empty space to add points, then click a point to relabel or adjust it.',
-  'Export a review JPG and JSON when you are finished.',
+  'Open a survey photo, or drag one into this page.',
+  'Click each animal to place a marker. Click a marker again to reclassify or move it.',
+  'Export the annotated JPG and JSON when the count is done.',
 ]
+
+const LINK_CLASS =
+  'font-medium text-foreground underline decoration-primary/60 underline-offset-4 hover:decoration-primary'
+
+function singular(label: string): string {
+  return label.endsWith('s') && !label.endsWith('ss') ? label.slice(0, -1) : label
+}
+
+/** "2 bulls · 1 spike" — the non-default classes that have a count. The total is shown separately. */
+function classBreakdown(record: RecentImageRecord): string {
+  const parts: string[] = []
+  for (const option of ELK_CATEGORY_OPTIONS) {
+    if (option.id === DEFAULT_CATEGORY) continue
+    const value = record[option.summaryKey]
+    if (value > 0) parts.push(`${value} ${value === 1 ? singular(option.countLabel) : option.countLabel}`)
+  }
+  if (parts.length > 0) return parts.join(' · ')
+  return record.counted > 0 ? `all ${categoryOption(DEFAULT_CATEGORY).countLabel}` : 'no markers yet'
+}
 
 export default function WelcomeScreen({
   recentImages,
@@ -145,280 +181,205 @@ export default function WelcomeScreen({
     setPendingRename(record)
   }, [])
 
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 lg:px-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <section className="rounded-2xl border border-border bg-card/70 p-6 shadow-sm">
-            <div className="max-w-2xl space-y-4">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-3 rounded-full border border-border/80 bg-background/50 px-3 py-2">
-                  <BrandMark className="size-8 shrink-0" title="Wildlife Survey Counter" />
-                  <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Wildlife Survey Counter</h1>
-                </div>
-                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  Review aerial survey photos, place markers quickly, and track bulls and spikes.
-                </p>
-              </div>
+  const openFilePicker = useCallback(() => fileInputRef.current?.click(), [])
 
-              <div
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setDragOver(true)
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={[
-                  'cursor-pointer rounded-2xl border-2 border-dashed px-6 py-10 transition-colors',
-                  dragOver ? 'border-primary bg-primary/10' : 'border-border bg-background/50 hover:border-primary/50',
-                ].join(' ')}
-              >
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto lg:overflow-hidden">
+      <div className="mx-auto h-full max-w-6xl px-5 lg:px-8">
+        {/* Below lg this is one scrolling column (masthead, recent work, then the footer text). At lg the two
+            columns scroll independently: the left wrapper becomes a real box, the right column is its own region. */}
+        <div className="flex flex-col gap-12 py-10 lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-16 lg:py-0">
+          <div className="contents lg:flex lg:min-h-0 lg:flex-col lg:gap-10 lg:overflow-y-auto lg:py-12 lg:pr-6">
+            <section className="order-1 min-w-0 space-y-10">
+              <header className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <BrandMark className="size-9 shrink-0" title="Wildlife Survey Counter" />
+                  <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    Wildlife Survey Counter
+                  </h1>
+                </div>
+                <p className="max-w-xl text-base leading-7 text-muted-foreground">
+                  Count elk in aerial survey photos. Mark each animal, classify it, and export the tally.
+                </p>
+              </header>
+
+              <div className="space-y-6">
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
                   className="hidden"
+                  tabIndex={-1}
                 />
+                <button
+                  type="button"
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDragOver(true)
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={openFilePicker}
+                  className={[
+                    'block w-full cursor-pointer rounded-lg border border-dashed px-6 py-12 text-center outline-none transition-colors',
+                    'focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                    dragOver
+                      ? 'border-primary bg-primary/10'
+                      : 'border-muted-foreground/40 hover:border-primary/70 hover:bg-card',
+                  ].join(' ')}
+                >
+                  {uploading ? (
+                    <span className="block space-y-3">
+                      <span className="mx-auto block size-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                      <span className="block text-sm text-muted-foreground">Preparing your image…</span>
+                    </span>
+                  ) : (
+                    <span className="block space-y-1">
+                      <span className="block text-base font-medium text-foreground">Drop a survey photo here</span>
+                      <span className="block text-sm text-muted-foreground">or click to browse this computer</span>
+                    </span>
+                  )}
+                </button>
 
-                {uploading ? (
-                  <div className="space-y-3 text-center">
-                    <div className="mx-auto size-9 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                    <p className="text-sm text-muted-foreground">Preparing your image…</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4 text-center">
-                    <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/12 text-primary">
-                      <FolderOpenIcon className="size-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-base font-medium text-foreground">Drop a survey photo here</p>
-                      <p className="text-sm text-muted-foreground">or click to browse from this computer</p>
-                    </div>
-                  </div>
-                )}
+                <ol className="space-y-2 text-sm leading-6 text-muted-foreground">
+                  {QUICK_STEPS.map((step, index) => (
+                    <li key={step} className="flex gap-4">
+                      <span className="w-4 shrink-0 text-right font-medium text-primary tabular-nums">
+                        {index + 1}
+                      </span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
+            </section>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                {QUICK_STEPS.map((step, index) => (
-                  <div key={step} className="rounded-xl border border-border bg-background/50 px-4 py-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                      Step {index + 1}
-                    </div>
-                    <p className="mt-2 text-sm leading-5 text-muted-foreground">{step}</p>
-                  </div>
-                ))}
-              </div>
-
-              <section className="rounded-xl border border-primary/25 bg-primary/8 p-4">
-                <div className="space-y-3">
-                  <p className="text-sm leading-6 text-foreground">
-                    Built by{' '}
-                    <a
-                      href="mailto:davwmont@gmail.com"
-                      className="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      David Montague
-                    </a>{' '}
-                    in Bozeman, Montana.
-                  </p>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-xl border border-border/70 bg-background/45 p-3">
-                      <div className="text-sm font-medium text-foreground">Feedback</div>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Share bugs, feature requests, workflow notes, or any other feedback.
-                      </p>
-                      <div className="mt-3">
-                        <Button asChild size="sm">
-                          <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer">
-                            Give feedback
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-border/70 bg-background/45 p-3">
-                      <div className="text-sm font-medium text-foreground">Updates</div>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Leave your email if you want to be notified about updates to the tool.
-                      </p>
-                      <form
-                        action={UPDATES_FORM_ACTION}
-                        method="post"
-                        target="updates-signup-target"
-                        className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row"
-                        onSubmit={() => {
-                          setUpdatesSubmitted(true)
-                          setUpdatesEmail('')
-                        }}
-                      >
-                        <label htmlFor="home-notify-email" className="sr-only">
-                          Email for updates
-                        </label>
-                        <input
-                          id="home-notify-email"
-                          type="email"
-                          name={UPDATES_FORM_EMAIL_FIELD}
-                          autoComplete="email"
-                          required
-                          placeholder="Email for updates"
-                          value={updatesEmail}
-                          onChange={(event) => {
-                            setUpdatesEmail(event.target.value)
-                            if (updatesSubmitted) setUpdatesSubmitted(false)
-                          }}
-                          className="h-9 min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:flex-1"
-                        />
-                        <input type="hidden" name="fvv" value="1" />
-                        <input type="hidden" name="pageHistory" value="0" />
-                        <Button type="submit" size="sm" className="sm:shrink-0">
-                          Notify me
-                        </Button>
-                      </form>
-                      <iframe title="Signup form submission target" name="updates-signup-target" className="hidden" />
-                      {updatesSubmitted ? (
-                        <p className="mt-2 text-xs leading-5 text-primary">
-                          Thanks. I’ll use this only for tool updates.
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
+            <div className="order-3 min-w-0 space-y-8">
+              <section className="space-y-2 border-t border-border pt-8 text-sm leading-6 text-muted-foreground">
+                <h2 className="font-semibold text-foreground">Your work stays in this browser</h2>
+                <p>
+                  Photos and counts are saved in this browser only. They stay private to this device and are not
+                  visible on the internet.
+                </p>
+                <p>
+                  Clearing browser storage, switching browsers, or losing this device can lose saved work, so export
+                  the JSON when a count matters. If any of this changes, this page will say so clearly.
+                </p>
               </section>
 
-              <section className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
-                  Storage and Privacy
-                </div>
-                <ul className="mt-2 space-y-2 text-sm leading-6 text-muted-foreground">
-                  <li>Work is saved in this browser.</li>
-                  <li>That means it stays private to this browser and is not visible on the internet.</li>
-                  <li>
-                    If you switch browsers, clear browser storage, or lose access to this device, you can lose access
-                    to saved labeling work.
-                  </li>
-                  <li>If any of this changes in the future, this page will say so clearly.</li>
-                </ul>
-              </section>
+              <footer className="space-y-4 border-t border-border pt-8 text-sm leading-6 text-muted-foreground">
+                <p>
+                  I’m David Montague, a developer in Bozeman, Montana, and I build and maintain this tool. If it’s
+                  useful to you, or if something gets in your way, I’d like to hear about it:{' '}
+                  <a href={`mailto:${CONTACT_EMAIL}`} className={LINK_CLASS}>
+                    email me
+                  </a>{' '}
+                  or{' '}
+                  <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer" className={LINK_CLASS}>
+                    send feedback
+                  </a>
+                  .
+                </p>
+
+                <form
+                  action={UPDATES_FORM_ACTION}
+                  method="post"
+                  target="updates-signup-target"
+                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                  onSubmit={() => {
+                    setUpdatesSubmitted(true)
+                    setUpdatesEmail('')
+                  }}
+                >
+                  <label htmlFor="home-notify-email" className="shrink-0">
+                    Get an email when the tool changes
+                  </label>
+                  <Input
+                    id="home-notify-email"
+                    type="email"
+                    name={UPDATES_FORM_EMAIL_FIELD}
+                    autoComplete="email"
+                    required
+                    placeholder="you@example.gov"
+                    value={updatesEmail}
+                    onChange={(event) => {
+                      setUpdatesEmail(event.target.value)
+                      if (updatesSubmitted) setUpdatesSubmitted(false)
+                    }}
+                    className="h-8 sm:max-w-64"
+                  />
+                  <input type="hidden" name="fvv" value="1" />
+                  <input type="hidden" name="pageHistory" value="0" />
+                  <Button type="submit" variant="outline" size="sm" className="sm:shrink-0">
+                    Notify me
+                  </Button>
+                </form>
+                <iframe title="Signup form submission target" name="updates-signup-target" className="hidden" />
+                {updatesSubmitted ? (
+                  <p className="text-xs text-primary">Thanks — this address is only used for tool updates.</p>
+                ) : null}
+              </footer>
             </div>
-          </section>
+          </div>
 
-          <aside className="space-y-6 rounded-2xl border border-border bg-card/70 p-6 shadow-sm">
+          <aside className="order-2 min-w-0 space-y-10 lg:min-h-0 lg:overflow-y-auto lg:py-12">
             <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <HistoryIcon className="size-4 text-primary" />
-                <h2 className="text-sm font-semibold text-foreground">Recent Work</h2>
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-sm font-semibold text-foreground">Recent work</h2>
+                {recentImages.length > 1 ? (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span className="mr-1">Sort</span>
+                    <Button
+                      size="xs"
+                      variant={recentImagesSort === 'last-edited' ? 'secondary' : 'ghost'}
+                      onClick={() => onChangeRecentImagesSort('last-edited')}
+                    >
+                      Last edited
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant={recentImagesSort === 'alphabetical' ? 'secondary' : 'ghost'}
+                      onClick={() => onChangeRecentImagesSort('alphabetical')}
+                    >
+                      A–Z
+                    </Button>
+                  </div>
+                ) : null}
               </div>
 
               {recentImages.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Sort
-                  </span>
-                  <Button
-                    size="xs"
-                    variant={recentImagesSort === 'last-edited' ? 'secondary' : 'outline'}
-                    onClick={() => onChangeRecentImagesSort('last-edited')}
-                  >
-                    Last edited
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={recentImagesSort === 'alphabetical' ? 'secondary' : 'outline'}
-                    onClick={() => onChangeRecentImagesSort('alphabetical')}
-                  >
-                    Alphabetical
-                  </Button>
-                </div>
-              ) : null}
-
-              {recentImages.length > 0 ? (
                 <div className="space-y-3">
-                  <div className="max-h-[42rem] space-y-3 overflow-y-auto pr-1">
+                  <ul className="divide-y divide-border border-y border-border">
                     {recentImages.map((record) => (
-                      <div key={record.id} className="rounded-xl border border-border bg-background/45 p-3">
-                        <div className="flex items-start gap-3">
-                          <button
-                            type="button"
-                            onClick={() => onOpenRecentImage(record)}
-                            className="relative mt-0.5 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background/70"
-                            aria-label={`Open ${displayNameFor(record)}`}
-                          >
-                            {previewUrls[record.id] ? (
-                              <img
-                                src={previewUrls[record.id]}
-                                alt=""
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                                draggable={false}
-                              />
-                            ) : (
-                              <ImageIcon className="size-5 text-muted-foreground/70" />
-                            )}
-                          </button>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-foreground">
-                                  {displayNameFor(record)}
-                                </p>
-                                <p className="mt-1 text-xs text-muted-foreground">{formatCountSummary(record)}</p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {record.width} × {record.height}px
-                                </p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  Last edited {new Date(record.lastEditedAt).toLocaleString()}
-                                </p>
-                              </div>
-                              <Button
-                                size="icon-xs"
-                                variant="ghost"
-                                onClick={() => void handleDeleteClick(record)}
-                                aria-label={`Delete ${displayNameFor(record)} from recent work`}
-                              >
-                                <Trash2Icon className="size-3.5" />
-                              </Button>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <Button size="xs" variant="outline" onClick={() => onOpenRecentImage(record)}>
-                                Open
-                              </Button>
-                              <Button size="xs" variant="outline" onClick={() => openRenameDialog(record)}>
-                                <PencilLineIcon className="size-3.5" />
-                                Rename
-                              </Button>
-                              <Button size="xs" variant="secondary" onClick={() => void onExportRecent(record)}>
-                                Export
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <RecentWorkRow
+                        key={record.id}
+                        record={record}
+                        previewUrl={previewUrls[record.id]}
+                        onOpen={() => onOpenRecentImage(record)}
+                        onRename={() => openRenameDialog(record)}
+                        onExport={() => void onExportRecent(record)}
+                        onDelete={() => void handleDeleteClick(record)}
+                      />
                     ))}
-                  </div>
+                  </ul>
 
                   <div className="flex justify-end">
                     <Button size="sm" variant="outline" onClick={onExportAllJson}>
-                      Export saved annotations
+                      Export all saved annotations
                     </Button>
                   </div>
                 </div>
               ) : (
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Images you open in this browser will show up here with their saved counts and classifications.
+                  Photos you open in this browser will show up here with their saved counts.
                 </p>
               )}
             </section>
 
             {sampleImages.length > 0 && (
               <section className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <SparklesIcon className="size-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-foreground">Dev Samples</h2>
-                </div>
+                <h2 className="text-sm font-semibold text-foreground">Dev samples</h2>
                 <div className="flex flex-wrap gap-2">
                   {sampleImages.map((sample) => (
                     <Button key={sample.url} size="xs" variant="outline" onClick={() => onOpenSampleImage(sample)}>
@@ -435,10 +396,10 @@ export default function WelcomeScreen({
       <Dialog open={pendingDelete !== null} onOpenChange={(open) => (!open ? setPendingDelete(null) : null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete this recent item?</DialogTitle>
+            <DialogTitle>Delete this image from recent work?</DialogTitle>
             <DialogDescription>
               {pendingDelete
-                ? `${displayNameFor(pendingDelete)} has saved annotations. Deleting it will remove the saved image and annotation data from this browser.`
+                ? `${displayNameFor(pendingDelete)} has ${pendingDelete.counted} saved marker${pendingDelete.counted === 1 ? '' : 's'}. Deleting removes the image and its markers from this browser. Export first if you want to keep them.`
                 : ''}
             </DialogDescription>
           </DialogHeader>
@@ -454,7 +415,7 @@ export default function WelcomeScreen({
                 setPendingDelete(null)
               }}
             >
-              Delete Item
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -468,7 +429,7 @@ export default function WelcomeScreen({
               {pendingRename ? `Choose a clearer name for ${pendingRename.filename}.` : ''}
             </DialogDescription>
           </DialogHeader>
-          <input
+          <Input
             value={draftName}
             onChange={(event) => setDraftName(event.target.value)}
             onKeyDown={(event) => {
@@ -477,7 +438,6 @@ export default function WelcomeScreen({
               onRenameRecentImage(pendingRename, normalizeDisplayName(draftName, pendingRename.filename))
               setPendingRename(null)
             }}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             placeholder="Image name"
             autoFocus
           />
@@ -492,11 +452,98 @@ export default function WelcomeScreen({
                 setPendingRename(null)
               }}
             >
-              Save Name
+              Save name
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function RecentWorkRow({
+  record,
+  previewUrl,
+  onOpen,
+  onRename,
+  onExport,
+  onDelete,
+}: {
+  record: RecentImageRecord
+  previewUrl: string | undefined
+  onOpen: () => void
+  onRename: () => void
+  onExport: () => void
+  onDelete: () => void
+}) {
+  const name = displayNameFor(record)
+  const edited = new Date(record.lastEditedAt)
+  const [previewFailed, setPreviewFailed] = useState(false)
+
+  return (
+    <li className="flex items-center gap-2 py-3">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${name}`}
+        className="group flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        <span className="relative h-11 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
+          {previewUrl && !previewFailed ? (
+            <img
+              src={previewUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+              draggable={false}
+              onError={() => setPreviewFailed(true)}
+            />
+          ) : (
+            <ImageIcon className="absolute inset-0 m-auto size-4 text-muted-foreground/60" />
+          )}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground underline-offset-4 decoration-muted-foreground/50 group-hover:underline">
+            {name}
+          </span>
+          <span
+            className="mt-0.5 block truncate text-xs text-muted-foreground"
+            title={`${record.width} × ${record.height}px · edited ${edited.toLocaleString()}`}
+          >
+            {classBreakdown(record)} · {formatRelativeTime(record.lastEditedAt)}
+          </span>
+        </span>
+
+        <span className="shrink-0 pl-2 text-right">
+          <span className="block text-lg font-semibold leading-none text-foreground tabular-nums">
+            {record.counted}
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">elk</span>
+        </span>
+      </button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            className="shrink-0 text-muted-foreground"
+            aria-label={`More actions for ${name}`}
+          >
+            <MoreHorizontalIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onRename}>Rename…</DropdownMenuItem>
+          <DropdownMenuItem onSelect={onExport}>Export annotations</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+            Delete from this browser
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
   )
 }

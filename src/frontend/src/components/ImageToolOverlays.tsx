@@ -29,15 +29,16 @@ export default function ImageToolOverlays() {
     [selectedAnnotations],
   )
 
-  const displayCategory = state.selectedIds.size > 0 ? selectedCategory : state.activeCategory
+  const selectionCount = state.selectedIds.size
+  const displayCategory = selectionCount > 0 ? selectedCategory : state.activeCategory
   const displayOption = displayCategory ? categoryOption(displayCategory) : undefined
 
   if (!state.image) return null
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
-      <div className="absolute top-3 right-3 pointer-events-auto">
-        <PaletteCard
+      <div className="pointer-events-auto absolute top-2 right-2 sm:top-3 sm:right-3">
+        <OverlayPanel
           title="Class"
           hint={
             <span className="inline-flex items-center gap-1.5">
@@ -45,33 +46,29 @@ export default function ImageToolOverlays() {
               <span>to cycle</span>
             </span>
           }
-          widthClass="w-[21rem]"
         >
-          <TooltipProvider delayDuration={150}>
-            {ELK_CATEGORY_OPTIONS.map((option) => (
-              <FloatingActionButton
-                key={option.id}
-                active={displayCategory === option.id}
-                label={option.shortLabel}
-                ariaLabel={option.label}
-                square
-                tooltip={`${option.label} (${option.shortcut.toUpperCase()})${option.hint ? ` — ${option.hint}` : ''}`}
-                onClick={() => {
-                  if (state.selectedIds.size > 0) {
-                    dispatch({
-                      type: 'SET_CATEGORY',
-                      ids: [...state.selectedIds],
-                      category: option.id,
-                    })
-                    return
-                  }
-                  dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
-                }}
-              />
-            ))}
-          </TooltipProvider>
+          <div className="flex flex-wrap gap-1 sm:gap-1.5">
+            <TooltipProvider delayDuration={150}>
+              {ELK_CATEGORY_OPTIONS.map((option) => (
+                <ClassButton
+                  key={option.id}
+                  active={displayCategory === option.id}
+                  label={option.shortLabel}
+                  ariaLabel={option.label}
+                  tooltip={`${option.label} (${option.shortcut.toUpperCase()})${option.hint ? ` — ${option.hint}` : ''}`}
+                  onClick={() => {
+                    if (selectionCount > 0) {
+                      dispatch({ type: 'SET_CATEGORY', ids: [...state.selectedIds], category: option.id })
+                      return
+                    }
+                    dispatch({ type: 'SET_ACTIVE_CATEGORY', category: option.id })
+                  }}
+                />
+              ))}
+            </TooltipProvider>
+          </div>
 
-          <div className="basis-full flex items-center justify-end gap-2 px-1 text-xs text-slate-100">
+          <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
             {displayOption ? (
               <>
                 <span
@@ -79,125 +76,107 @@ export default function ImageToolOverlays() {
                   className="size-2 shrink-0 rounded-full"
                   style={{ backgroundColor: displayOption.color }}
                 />
-                <span>{displayOption.label}</span>
+                <span className="text-foreground">{displayOption.label}</span>
+                <span>{selectionCount > 0 ? 'selected' : 'for new markers'}</span>
               </>
             ) : (
-              <span className="text-slate-300/80">Mixed classes — pick one to apply it to the selection</span>
+              <span>Mixed classes — pick one to apply it to the selection</span>
             )}
           </div>
 
-          {state.selectedIds.size > 0 ? (
-            <div className="basis-full space-y-2 border-t border-white/10 px-1 pt-2">
-              <div className="rounded-xl bg-white/5 px-2.5 py-2 text-[11px] leading-4 text-slate-200/90">
-                Sets the class of the {state.selectedIds.size} selected marker
-                {state.selectedIds.size === 1 ? '' : 's'}. Changing class or moving a marker also confirms it.
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-2.5 py-2 text-[11px] text-slate-200/90">
-                <span>
-                  Delete {state.selectedIds.size} selected marker{state.selectedIds.size === 1 ? '' : 's'}
-                </span>
+          {selectionCount > 0 ? (
+            <div
+              className={[
+                'space-y-2 border-t border-border pt-1.5 text-xs text-muted-foreground sm:pt-2',
+                // On narrow viewports only the Confirm button survives, so skip the block when it has nothing to show.
+                confirmableSelectionCount > 0 ? '' : 'hidden sm:block',
+              ].join(' ')}
+            >
+              <p className="hidden leading-5 sm:block">
+                Picking a class applies it to the {selectionCount} selected marker{selectionCount === 1 ? '' : 's'} and
+                confirms {selectionCount === 1 ? 'it' : 'them'}.
+              </p>
+              <div className="hidden items-center justify-between gap-3 sm:flex">
+                <span>Delete selected</span>
                 <ShortcutKey shortcut="Backspace" compact />
               </div>
               {confirmableSelectionCount > 0 ? (
                 <Button
                   size="sm"
+                  variant="outline"
                   onClick={() => dispatch({ type: 'CONFIRM', ids: [...state.selectedIds] })}
-                  className="h-auto w-full items-center justify-between gap-3 rounded-xl border border-amber-400/25 bg-amber-500/12 px-3 py-2.5 text-left text-[11px] font-medium text-amber-50 shadow-none hover:bg-amber-500/18"
+                  className="w-full justify-between border-unconfirmed/40 bg-unconfirmed/10 text-foreground hover:bg-unconfirmed/20"
                 >
-                  <span className="min-w-0 inline-flex items-center gap-2">
+                  <span className="inline-flex min-w-0 items-center gap-2">
                     <CheckIcon className="size-3.5 shrink-0" />
-                    <span className="leading-4">
-                      Confirm {confirmableSelectionCount} unconfirmed marker
-                      {confirmableSelectionCount === 1 ? '' : 's'}
-                    </span>
+                    <span>Confirm {confirmableSelectionCount} unconfirmed</span>
                   </span>
                   <ShortcutKey shortcut="Enter" compact />
                 </Button>
               ) : null}
             </div>
-          ) : (
-            <div className="basis-full border-t border-white/10 px-1 pt-2 text-[11px] leading-4 text-slate-300/80">
-              This sets the class for the next new point. Click a marker first if you want to relabel an existing one.
-            </div>
-          )}
-        </PaletteCard>
+          ) : null}
+        </OverlayPanel>
       </div>
     </div>
   )
 }
 
-function PaletteCard({
+/** Shared chrome for the floating panels over the image (class palette, marker visibility, zoom speed). */
+export function OverlayPanel({
   title,
   hint,
-  widthClass = 'w-[19rem]',
+  className = 'w-auto sm:w-72',
   children,
 }: {
   title: string
   hint?: React.ReactNode
-  widthClass?: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
     <section
       className={[
-        widthClass,
-        'max-w-[calc(100vw-1.5rem)] rounded-2xl border border-white/10 bg-slate-950/72 p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md',
-        'supports-[backdrop-filter]:bg-slate-950/58',
+        className,
+        'max-w-[calc(100vw-1rem)] space-y-1.5 rounded-lg border border-border bg-popover/85 p-1.5 shadow-md backdrop-blur-md sm:space-y-2 sm:p-3',
       ].join(' ')}
     >
-      <div className="mb-2 flex items-baseline justify-between gap-2 px-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-100">{title}</div>
-        {hint ? <div className="text-[11px] text-slate-300/80">{hint}</div> : null}
+      <div className="hidden items-baseline justify-between gap-3 sm:flex">
+        <h2 className="text-xs font-semibold text-foreground">{title}</h2>
+        {hint ? <div className="text-xs text-muted-foreground">{hint}</div> : null}
       </div>
-
-      <div className="flex flex-wrap justify-end gap-2">{children}</div>
+      {children}
     </section>
   )
 }
 
-function FloatingActionButton({
-  active = false,
-  disabled = false,
-  icon: Icon,
+function ClassButton({
+  active,
   label,
   ariaLabel,
-  square = false,
   tooltip,
   onClick,
 }: {
-  active?: boolean
-  disabled?: boolean
-  icon?: React.ComponentType<{ className?: string }>
+  active: boolean
   label: string
-  ariaLabel?: string
-  /** Fixed-width button for one-letter labels. */
-  square?: boolean
-  /** Shown in a tooltip on hover/focus; needs an enclosing TooltipProvider. */
-  tooltip?: React.ReactNode
+  ariaLabel: string
+  tooltip: string
   onClick: () => void
 }) {
-  const button = (
-    <Button
-      variant={active ? 'default' : 'outline'}
-      size="sm"
-      disabled={disabled}
-      aria-label={ariaLabel}
-      onClick={onClick}
-      className={[
-        'h-9 gap-2 rounded-xl border-white/10 bg-slate-900/65 text-slate-50 shadow-none backdrop-blur-sm',
-        'hover:bg-slate-800/90',
-        square ? 'w-9 justify-center px-0 font-semibold' : '',
-        active ? 'border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90' : '',
-      ].join(' ')}
-    >
-      {Icon ? <Icon className="size-3.5" /> : null}
-      <span>{label}</span>
-    </Button>
-  )
-  if (!tooltip) return button
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipTrigger asChild>
+        <Button
+          variant={active ? 'default' : 'outline'}
+          size="sm"
+          aria-label={ariaLabel}
+          aria-pressed={active}
+          onClick={onClick}
+          className="w-8 px-0 font-semibold sm:w-9"
+        >
+          {label}
+        </Button>
+      </TooltipTrigger>
       <TooltipContent side="bottom">{tooltip}</TooltipContent>
     </Tooltip>
   )

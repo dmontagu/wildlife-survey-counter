@@ -21,6 +21,7 @@ export const MIN_ZOOM_SPEED = 0.25
 export const MAX_ZOOM_SPEED = 4
 
 export const SHOW_DEV_SAMPLES = import.meta.env.DEV && import.meta.env.VITE_SHOW_SAMPLE_IMAGES !== 'false'
+export const CONTACT_EMAIL = 'davwmont@gmail.com'
 export const FEEDBACK_FORM_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSeK1SurenTcjOf0HY-Zs8aWsCVt83YInqJR7G6QMAP5J4K5rQ/viewform?usp=sharing'
 export const UPDATES_FORM_ACTION =

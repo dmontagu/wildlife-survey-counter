@@ -1,4 +1,4 @@
-import { ChevronDownIcon, FolderOpenIcon, HomeIcon, PencilLineIcon } from 'lucide-react'
+import { ChevronDownIcon, CircleHelpIcon, FolderOpenIcon, HomeIcon, PencilLineIcon } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FEEDBACK_FORM_URL } from '../config'
@@ -22,6 +22,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
+import { Input } from './ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 interface ToolbarProps {
@@ -88,7 +89,7 @@ export default function Toolbar({
   )
 
   return (
-    <div className="border-b border-border bg-card/70 px-3 py-2 backdrop-blur-sm">
+    <div className="border-b border-border bg-card/70 px-3 py-1.5 backdrop-blur-sm sm:py-2">
       <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       <input
         ref={annotationsInputRef}
@@ -98,14 +99,14 @@ export default function Toolbar({
         className="hidden"
       />
 
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
-        <div className="mr-1 flex items-center gap-2">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="mr-1 flex min-w-0 items-center gap-2">
           <div className="hidden min-w-0 sm:flex items-center">
             <button
               type="button"
               onClick={hasImage ? onGoHome : undefined}
               className={[
-                'inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground',
+                'inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground',
                 hasImage ? 'cursor-pointer transition-colors hover:text-foreground' : 'cursor-default',
               ].join(' ')}
               aria-label={hasImage ? 'Go to home page' : undefined}
@@ -148,17 +149,18 @@ export default function Toolbar({
           )}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           {hasImage && (
-            <Button variant="outline" size="sm" onClick={onGoHome}>
+            <Button variant="outline" size="sm" onClick={onGoHome} aria-label="Home">
               <HomeIcon className="size-3.5" />
-              Home
+              <span className="hidden sm:inline">Home</span>
             </Button>
           )}
 
           {hasImage ? (
-            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_HELP' })}>
-              Help
+            <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'TOGGLE_HELP' })} aria-label="Help">
+              <CircleHelpIcon className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">Help</span>
               <ShortcutKey shortcut="?" compact />
             </Button>
           ) : null}
@@ -167,7 +169,7 @@ export default function Toolbar({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button asChild size="sm">
+                  <Button asChild size="sm" className="hidden sm:inline-flex">
                     <a href={FEEDBACK_FORM_URL} target="_blank" rel="noreferrer">
                       Give Feedback
                     </a>
@@ -259,7 +261,7 @@ function WorkspaceMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="max-w-[240px] gap-2">
+          <Button variant="outline" size="sm" className="max-w-[min(240px,60vw)] gap-2">
             <FolderOpenIcon className="size-3.5" />
             <span className="truncate">{currentDisplayName || currentFilename || 'Open image'}</span>
             <ChevronDownIcon className="size-3.5 opacity-70" />
@@ -356,13 +358,13 @@ function WorkspaceMenu({
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleRenameSubmit}>
-            <label className="flex flex-col gap-2 text-sm">
+            <label htmlFor="rename-image-name" className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-foreground">Display name</span>
-              <input
+              <Input
+                id="rename-image-name"
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
                 placeholder={currentFilename || 'Survey image'}
-                className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </label>
             <DialogFooter>

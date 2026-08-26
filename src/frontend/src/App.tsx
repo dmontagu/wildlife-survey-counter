@@ -59,7 +59,7 @@ import {
   LS_ZOOM_SPEED_KEY,
   legacyAnnotationsStorageKey,
 } from './lib/storage'
-import { platformModifier } from './platform'
+import { isMac, platformModifier } from './platform'
 import { AppStateContext, DispatchContext, initialState, reducer } from './state'
 import type {
   Annotation,
@@ -1046,12 +1046,12 @@ export default function App() {
 
 function NoticeBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <div className="border-b border-amber-900/40 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
+    <div className="border-b border-border bg-card px-3 py-2 text-sm text-foreground">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <span>{message}</span>
-        <button type="button" onClick={onDismiss} className="text-xs uppercase tracking-[0.16em] text-amber-200/80">
+        <Button variant="ghost" size="xs" onClick={onDismiss}>
           Dismiss
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -1073,11 +1073,19 @@ function WorkspaceHint({
   onRedo: () => void
 }) {
   return (
-    <div className="border-b border-border bg-card/60 px-3 py-2 text-sm text-muted-foreground">
+    <div className="border-b border-border bg-card/60 px-3 py-1.5 text-sm text-muted-foreground sm:py-2">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
-        <span>Drag a new image into the window at any time.</span>
+        <span className="hidden flex-wrap items-center gap-x-1.5 gap-y-1 text-xs sm:flex">
+          <span>Drag empty space to pan</span>
+          <span aria-hidden="true">·</span>
+          <ShortcutSequence shortcut={isMac ? `${platformModifier}+Scroll` : 'Scroll'} compact />
+          <span>to zoom</span>
+          <span aria-hidden="true">·</span>
+          <ShortcutKey shortcut="?" compact />
+          <span>for help</span>
+        </span>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full items-center gap-1.5 sm:w-auto sm:gap-2">
           <WorkspaceEditButton
             disabled={!canRemove}
             icon={Trash2Icon}
@@ -1119,13 +1127,7 @@ function WorkspaceEditButton({
   onClick: () => void
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={disabled}
-      onClick={onClick}
-      className="h-8 gap-2 rounded-lg border border-border/70 bg-background/35 px-2.5 text-muted-foreground hover:bg-background/60 hover:text-foreground"
-    >
+    <Button variant="outline" size="sm" disabled={disabled} onClick={onClick} className="flex-1 gap-2 sm:flex-none">
       <Icon className="size-3.5" />
       <span>{label}</span>
       {shortcut.includes('+') ? (
