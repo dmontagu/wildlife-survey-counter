@@ -429,9 +429,7 @@ export default function App() {
       existingRecord?.height !== pending.height
     const annotationsChanged = !storedAnnotationsMatch(existingSavedAnnotations, serializedAnnotations)
     const lastEditedAt =
-      !existingRecord || annotationsChanged || metadataChanged
-        ? new Date().toISOString()
-        : existingRecord.lastEditedAt
+      !existingRecord || annotationsChanged || metadataChanged ? new Date().toISOString() : existingRecord.lastEditedAt
 
     localStorage.setItem(storageKey, serializedAnnotations)
 
