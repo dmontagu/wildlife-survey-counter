@@ -31,7 +31,7 @@ Config: `components.json` in the frontend root.
   - Drag annotation = move, drag bbox handle = resize
   - Middle mouse drag = pan
   - Backspace = delete manual annotations, reject imported ones
-- **Config**: `src/config.ts` defines the keyboard shortcuts (`KEYS`), zoom bounds, and label categories; click behavior lives in `Canvas.tsx`
+- **Config**: `src/config.ts` defines the keyboard shortcuts (`KEYS` — including `Enter`/`Shift+Enter` to confirm/unconfirm and `E`/`Shift+E` to cycle the class) and the `ELK_CATEGORY_OPTIONS` table (each class's colour, badge, and single-letter shortcut `C`/`B`/`S`/`A`/`U`), plus zoom bounds; click behavior lives in `Canvas.tsx`
 - **Persistence**: localStorage saves/restores the current image, its annotations, and UI preferences across refreshes (prefix: `wsc:`); images opened from disk are stored as blobs in IndexedDB (`wsc-browser-images`, see `src/lib/browser-images.ts`)
 
 ## Path Aliases
