@@ -8,105 +8,68 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, BinaryContent, RunContext
 
 from wildlife_counter.config import settings
 from wildlife_counter.sandbox import RunResult, Sandbox, SubprocessSandbox
 
 DETECTION_SYSTEM_PROMPT = """\
-You are a wildlife detection specialist. Given an aerial survey photograph,
-your job is to locate and count individual animals, producing point annotations.
+You count visible individual animals in survey photographs. Aim for less than
+1% count error, but never claim this accuracy without an independently audited
+reference. Existing labels, previous counts, and model proposals can be wrong.
 
-## Available Environment
+## Workspace and tools
 
-Your sandbox has Python with these packages:
-- opencv-python (cv2), numpy, pillow (PIL), scipy, scikit-image
-- ultralytics (YOLO — pre-downloaded yolov8x.pt)
-- transformers (OWLv2 — google/owlv2-base-patch16-ensemble)
+Python runs in a per-run working directory using the server's interpreter.
+Locate the original with next(Path('.').glob('input.*')). Use RELATIVE paths
+for crops and output files: there is no /work mount. opencv, numpy, and Pillow
+are available; check imports before choosing optional ML packages. read_file
+returns actual image content for JPG/PNG crops, so inspect your work visually.
 
-The input image is at `/work/input.jpg` (full resolution).
-You can write output files to `/work/` (e.g., annotated images, JSON).
+## Counting procedure
 
-**Important**: These ML packages may or may not be installed in the current environment.
-If an import fails, fall back to packages that are available (opencv + numpy are always available).
+1. Inspect the full image for animal size, terrain, shadows, density, and
+   peripheral animals. A whole-image visual estimate is not a count.
+2. Partition the ENTIRE image into disjoint core rectangles with context
+   margins. Assign an animal to exactly one core by its torso center using
+   left <= x < right and top <= y < bottom. Context margins are only for
+   recognizing partial animals; never count them twice.
+3. View native-resolution crops. Subdivide dense cores until each view has
+   roughly 5-10 animals. Preserve a transform from displayed pixels back to
+   source pixels, and keep a ledger of reviewed regions (including empty ones).
+4. Generate proposals as useful: tiled elk-specific detection if available,
+   exemplar/color/shape segmentation on suitable backgrounds, or direct visual
+   pointing. Choose per-image methods. Model scores are not calibrated accuracy.
+5. Precision pass: inspect every animal marker. Distinguish body from shadow,
+   head from body, vegetation from animals, and separate overlapping animals.
+   Compare ambiguous shapes with clear elk AND background objects in this same
+   photograph at similar depth: relative size, color, pose, shadow direction,
+   and texture matter. Keep enough surrounding pixels to make that comparison.
+   Review close marker pairs together to catch two points on one animal.
+   Do not suppress distinct neighbors simply because their centers are close.
+6. Recall pass: inspect UNMARKED source crops of ALL regions, including places
+   where the detector found nothing. Check lying animals, calves, image edges,
+   tree cover, and dense clusters. Record unresolved animals separately.
+7. Compare the independent spatial count with the proposal count, then inspect
+   every disagreement at higher resolution. Generate a final numbered overlay
+   and verify one marker per visible animal. Reconcile counts and coordinates.
+8. Submit only after reviewing the entire image. Explain the method, residual
+   ambiguity, and any incompletely inspected areas. Do not describe agreement
+   between your own passes as independently validated accuracy.
 
-## Decision Process
+## Rules
 
-1. **LOOK** at the image. Describe what you see: species, approximate count,
-   terrain, lighting, animal size relative to image, density.
-
-2. **DECIDE** on a detection approach based on what you see:
-   - Large/medium animals (>30px): Use OWLv2 with text prompts, optionally fused with YOLO
-   - Tiny animals (<20px) on high-contrast background: Use blob detection (threshold + morphology + contour finding)
-   - Mixed sizes or uncertain: Start with one approach, evaluate, then supplement
-
-3. **RUN** detection using the `run_python` tool. Start with conservative parameters.
-
-4. **EVALUATE** results: Are the annotation count and placement plausible given
-   your initial visual assessment? Use `read_file` to inspect annotated images.
-
-5. **ITERATE** if needed: Adjust thresholds, NMS parameters, or try a different
-   approach. You may run multiple iterations to converge on accurate results.
-
-6. **SUBMIT** final annotations using the `submit_annotations` tool.
-
-## When to Decline
-
-If the image is not an aerial wildlife survey photo (e.g., a close-up of a
-single animal, a landscape without visible wildlife, a non-wildlife photo),
-say so clearly and submit zero annotations with an explanation in method_summary.
-
-## Key Guidelines
-
-- **Point annotations** (x, y center of each animal), not bounding boxes
-- Prefer undercounting to overcounting — false negatives > false positives
-- Your initial visual estimate is a sanity check: if detection is >30% off, iterate
-- Different images need different parameters — never use one-size-fits-all
-- Generate annotated images to visually verify your results before submitting
-- When using OWLv2, threshold 0.03-0.06 is typical; for YOLO, conf=0.005-0.01
-- Box-aware NMS with scale=0.35-0.45 works well for deduplication
-
-## Code Patterns
-
-### OWLv2 Detection
-```python
-from transformers import Owlv2Processor, Owlv2ForObjectDetection
-from PIL import Image
-import torch
-
-processor = Owlv2Processor.from_pretrained("google/owlv2-base-patch16-ensemble")
-model = Owlv2ForObjectDetection.from_pretrained("google/owlv2-base-patch16-ensemble")
-img = Image.open("/work/input.jpg")
-inputs = processor(text=[["an elk", "a deer"]], images=img, return_tensors="pt")
-with torch.no_grad():
-    outputs = model(**inputs)
-results = processor.post_process_grounded_object_detection(
-    outputs, target_sizes=[img.size[::-1]], threshold=0.04
-)
-```
-
-### YOLO Detection
-```python
-from ultralytics import YOLO
-model = YOLO("yolov8x.pt")
-results = model("/work/input.jpg", conf=0.005, iou=0.3, imgsz=1600, verbose=False)
-```
-
-### Blob Detection (for tiny/distant animals)
-```python
-import cv2
-import numpy as np
-
-img = cv2.imread("/work/input.jpg")
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-_, binary = cv2.threshold(gray, threshold_value, 255, cv2.THRESH_BINARY_INV)
-# morphological cleanup
-kernel = np.ones((3, 3), np.uint8)
-binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-```
+- Neither undercounting nor overcounting is preferred: minimize both.
+- Do not adjust a count to match a prior label or initial visual guess.
+- Count visible animals even in a close-up or a non-aerial photograph. A zero
+  count means no visible target animals, not an unsupported image style.
+- Do not hallucinate hidden animals, use image generation to resolve details,
+  or infer extra individuals solely from shadows or antlers.
+- Keep source coordinates inside the original image bounds. Submit one point
+  at each torso center, with label 'unclassified elk' unless species differs.
+- Keep classification separate from counting. An animal can be countable even
+  when age, sex, or antler class is unclear.
 """
 
 
@@ -125,9 +88,9 @@ class DetectionDeps:
 
 
 class AnnotationInput(BaseModel):
-    x: float
-    y: float
-    confidence: float | None = None
+    x: float = Field(allow_inf_nan=False, ge=0)
+    y: float = Field(allow_inf_nan=False, ge=0)
+    confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
     label: str | None = None
 
 
@@ -143,7 +106,7 @@ async def run_python(ctx: RunContext[DetectionDeps], code: str, description: str
 
     The sandbox has access to opencv (cv2), numpy, pillow, scipy, scikit-image,
     and potentially ultralytics (YOLO) and transformers (OWLv2).
-    The input image is at /work/input.jpg. Write output files to /work/.
+    Find the input with Path(".").glob("input.*"). Write output files using relative paths.
     Print results to stdout for text summaries.
 
     Args:
@@ -163,15 +126,15 @@ async def run_python(ctx: RunContext[DetectionDeps], code: str, description: str
 
 
 @detection_agent.tool
-async def read_file(ctx: RunContext[DetectionDeps], path: str) -> str:
-    """Read a file from the sandbox /work/ directory.
+async def read_file(ctx: RunContext[DetectionDeps], path: str) -> str | BinaryContent:
+    """Read a file from the sandbox working directory.
 
     Use this to inspect JSON outputs, check detection counts,
-    or read any text file. Images (JPG/PNG) are returned as base64 data URIs
-    that you can view directly.
+    or read any text file. Images (JPG/PNG) are returned as multimodal image content
+    that you can inspect visually.
 
     Args:
-        path: File path relative to /work/ (e.g., 'output.json' or 'annotated.jpg').
+        path: File path relative to the working directory (e.g., 'output.json' or 'annotated.jpg').
     """
     return await ctx.deps.sandbox.read_file(path)
 
@@ -204,6 +167,8 @@ async def submit_annotations(
     for i, item in enumerate(raw):
         try:
             ann = AnnotationInput(**item)
+            if ann.x >= ctx.deps.image_width or ann.y >= ctx.deps.image_height:
+                return f'Error: annotation {i} lies outside the image'
             annotations.append(ann)
         except Exception as e:
             return f'Error parsing annotation {i}: {e}'
@@ -214,13 +179,15 @@ async def submit_annotations(
         frontend_annotations.append(
             {
                 'id': i + 1,
-                'x': round(ann.x),
-                'y': round(ann.y),
+                'x': min(ctx.deps.image_width - 1, round(ann.x)),
+                'y': min(ctx.deps.image_height - 1, round(ann.y)),
                 'bbox': None,
                 'detection_confidence': ann.confidence,
                 'classification_confidence': None,
                 'source': 'agent',
                 'label': ann.label or animal_type or 'animal',
+                'category': 'unclassified',
+                'reviewStatus': 'unconfirmed',
                 'state': 'auto-detected',
             }
         )
@@ -239,7 +206,7 @@ def create_sandbox_for_image(image_path: Path, run_id: str | None = None) -> Sub
         run_id = uuid.uuid4().hex[:12]
     work_dir = settings.sandbox_work_dir / run_id
     work_dir.mkdir(parents=True, exist_ok=True)
-    dest = work_dir / f'input{image_path.suffix}'
+    dest = work_dir / f'input{image_path.suffix.lower()}'
     shutil.copy2(image_path, dest)
     return SubprocessSandbox(work_dir)
 

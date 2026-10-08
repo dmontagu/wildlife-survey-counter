@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import shutil
+import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 import logfire
 from pydantic import BaseModel
+from pydantic_ai import BinaryContent
 
 
 class RunResult(BaseModel):
@@ -25,7 +26,7 @@ class Sandbox(ABC):
     async def execute(self, code: str, timeout: int = 120) -> RunResult: ...
 
     @abstractmethod
-    async def read_file(self, path: str) -> str: ...
+    async def read_file(self, path: str) -> str | BinaryContent: ...
 
     @abstractmethod
     async def stop(self) -> None: ...
@@ -35,7 +36,7 @@ class SubprocessSandbox(Sandbox):
     """Run code via subprocess in a work directory. No isolation — suitable for v1."""
 
     def __init__(self, work_dir: Path):
-        self.work_dir = work_dir
+        self.work_dir = work_dir.resolve()
 
     async def start(self) -> None:
         self.work_dir.mkdir(parents=True, exist_ok=True)
@@ -45,7 +46,7 @@ class SubprocessSandbox(Sandbox):
         script_path = self.work_dir / '_script.py'
         script_path.write_text(code)
         proc = await asyncio.create_subprocess_exec(
-            'python',
+            sys.executable,
             str(script_path),
             cwd=str(self.work_dir),
             stdout=asyncio.subprocess.PIPE,
@@ -76,7 +77,7 @@ class SubprocessSandbox(Sandbox):
             output_files=sorted(output_files),
         )
 
-    async def read_file(self, path: str) -> str:
+    async def read_file(self, path: str) -> str | BinaryContent:
         # Prevent path traversal
         clean = Path(path.lstrip('/'))
         if '..' in clean.parts:
@@ -90,8 +91,7 @@ class SubprocessSandbox(Sandbox):
         if full_path.suffix.lower() in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
             data = full_path.read_bytes()
             if len(data) > 50_000 * 1024:  # 50MB cap
-                return 'Error: file too large for base64 encoding'
-            b64 = base64.b64encode(data).decode()
+                return 'Error: image exceeds the 50 MB tool output limit'
             media_type = {
                 '.jpg': 'image/jpeg',
                 '.jpeg': 'image/jpeg',
@@ -99,7 +99,7 @@ class SubprocessSandbox(Sandbox):
                 '.gif': 'image/gif',
                 '.webp': 'image/webp',
             }.get(full_path.suffix.lower(), 'application/octet-stream')
-            return f'data:{media_type};base64,{b64}'
+            return BinaryContent(data=data, media_type=media_type)
 
         text = full_path.read_text(errors='replace')
         return text[:50000]
