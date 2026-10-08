@@ -1,0 +1,110 @@
+{
+ "DSC00756": {
+  "animal_frac": 0.0087,
+  "animal_px": 83.0,
+  "confident": 78,
+  "crowded": 0.833,
+  "low_conf_share": 0.487,
+  "megapixels": 60.2,
+  "proposals": 152
+ },
+ "DSC01116": {
+  "animal_frac": 0.0061,
+  "animal_px": 57.9,
+  "confident": 40,
+  "crowded": 0.75,
+  "low_conf_share": 0.612,
+  "megapixels": 60.2,
+  "proposals": 103
+ },
+ "DSC01790": {
+  "animal_frac": 0.0135,
+  "animal_px": 128.2,
+  "confident": 74,
+  "crowded": 0.635,
+  "low_conf_share": 0.516,
+  "megapixels": 60.2,
+  "proposals": 153
+ },
+ "DSC02031": {
+  "animal_frac": 0.0133,
+  "animal_px": 126.4,
+  "confident": 160,
+  "crowded": 0.969,
+  "low_conf_share": 0.654,
+  "megapixels": 60.2,
+  "proposals": 463
+ },
+ "IMG_3154": {
+  "animal_frac": 0.009,
+  "animal_px": 34.9,
+  "confident": 63,
+  "crowded": 0.73,
+  "low_conf_share": 0.492,
+  "megapixels": 10.1,
+  "proposals": 124
+ },
+ "IMG_3192": {
+  "animal_frac": 0.0074,
+  "animal_px": 28.9,
+  "confident": 201,
+  "crowded": 0.756,
+  "low_conf_share": 0.396,
+  "megapixels": 10.1,
+  "proposals": 333
+ },
+ "IMG_3694": {
+  "animal_frac": 0.0304,
+  "animal_px": 118.1,
+  "confident": 107,
+  "crowded": 0.86,
+  "low_conf_share": 0.684,
+  "megapixels": 10.1,
+  "proposals": 339
+ },
+ "IMG_3706": {
+  "animal_frac": 0.0119,
+  "animal_px": 46.3,
+  "confident": 125,
+  "crowded": 0.856,
+  "low_conf_share": 0.447,
+  "megapixels": 10.1,
+  "proposals": 226
+ },
+ "IMG_3733": {
+  "animal_frac": 0.0264,
+  "animal_px": 102.8,
+  "confident": 103,
+  "crowded": 0.854,
+  "low_conf_share": 0.27,
+  "megapixels": 10.1,
+  "proposals": 141
+ },
+ "IMG_3835": {
+  "animal_frac": 0.0045,
+  "animal_px": 17.7,
+  "confident": 321,
+  "crowded": 0.589,
+  "low_conf_share": 0.547,
+  "megapixels": 10.1,
+  "proposals": 708
+ },
+ "IMG_3911": {
+  "animal_frac": 0.0033,
+  "animal_px": 12.9,
+  "confident": 383,
+  "crowded": 0.355,
+  "low_conf_share": 0.366,
+  "megapixels": 10.1,
+  "proposals": 604
+ },
+ "IMG_3938": {
+  "animal_frac": 0.0091,
+  "animal_px": 35.5,
+  "confident": 62,
+  "crowded": 0.968,
+  "low_conf_share": 0.361,
+  "megapixels": 10.1,
+  "proposals": 97
+ }
+}

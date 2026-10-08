@@ -385,6 +385,29 @@ def finish_census(ctx: RunContext[Census], summary: str) -> dict:
     return {'count': len(points), 'possible_additional': len(uncertain), 'accuracy_certified': False}
 
 
+def propose(image_path: Path, width: int, height: int) -> list[dict] | None:
+    """Raw elk-detector proposals (center, box width, score) on overlapping crops; None if unavailable."""
+    try:
+        import ultralytics
+    except ImportError:
+        return None
+    model = getattr(ultralytics, 'YOLO')(str(settings.counting_weights))
+    points = []
+    with Image.open(image_path) as im:
+        for y in range(0, height, 400):
+            for x in range(0, width, 400):
+                left, top = max(0, x - 120), max(0, y - 120)
+                crop = im.crop((left, top, min(width, x + 520), min(height, y + 520))).convert('RGB')
+                result = model.predict(crop, conf=0.05, iou=0.7, imgsz=640, device='cpu', verbose=False)[0]
+                for b, score in zip(result.boxes.xyxy.tolist(), result.boxes.conf.tolist(), strict=True):
+                    px, py = (b[0] + b[2]) / 2 + left, (b[1] + b[3]) / 2 + top
+                    if x <= px < min(width, x + 400) and y <= py < min(height, y + 400):
+                        points.append(
+                            dict(id=len(points) + 1, x=px, y=py, confidence=score, size=max(b[2] - b[0], b[3] - b[1]))
+                        )
+    return points
+
+
 @counting_agent.tool(sequential=True)
 async def detect_candidates(ctx: RunContext[Census]) -> dict:
     """Run the optional elk detector once on overlapping 640px crops. Raw proposals are review aids."""
@@ -394,26 +417,7 @@ async def detect_candidates(ctx: RunContext[Census]) -> dict:
     if (c.work_dir / 'proposals.json').exists():
         return {'available': True, 'count': len(c.proposals), 'cached': True}
 
-    def predict():
-        try:
-            import ultralytics
-        except ImportError:
-            return None
-        model = getattr(ultralytics, 'YOLO')(str(settings.counting_weights))
-        points = []
-        with Image.open(c.image_path) as im:
-            for y in range(0, c.height, 400):
-                for x in range(0, c.width, 400):
-                    left, top = max(0, x - 120), max(0, y - 120)
-                    crop = im.crop((left, top, min(c.width, x + 520), min(c.height, y + 520))).convert('RGB')
-                    result = model.predict(crop, conf=0.05, iou=0.7, imgsz=640, device='cpu', verbose=False)[0]
-                    for b, score in zip(result.boxes.xyxy.tolist(), result.boxes.conf.tolist(), strict=True):
-                        px, py = (b[0] + b[2]) / 2 + left, (b[1] + b[3]) / 2 + top
-                        if x <= px < min(c.width, x + 400) and y <= py < min(c.height, y + 400):
-                            points.append(dict(id=len(points) + 1, x=px, y=py, confidence=score))
-        return points
-
-    points = await asyncio.to_thread(predict)
+    points = await asyncio.to_thread(propose, c.image_path, c.width, c.height)
     if points is None:
         return {'available': False, 'reason': 'Detector dependencies are not installed; inspect source pixels.'}
     c.proposals = points
