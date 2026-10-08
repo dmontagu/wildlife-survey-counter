@@ -348,12 +348,13 @@ def inspect_neighborhood(ctx: RunContext[Census], neighborhood: str) -> BinaryCo
 
 @counting_agent.tool(sequential=True)
 def split_region(ctx: RunContext[Census], region: str) -> dict:
-    """Replace a dense region with four disjoint children; prior decisions must be redone."""
+    """Replace a dense region with four (thin strips: two) disjoint children; prior decisions must be redone."""
     c = ctx.deps
     if region not in c.regions:
         raise ModelRetry('Unknown region.')
     left, top, right, bottom = c.regions[region]
-    if min(right - left, bottom - top) < 100:
+    width, height = right - left, bottom - top
+    if max(width, height) < 100:
         raise ModelRetry('Region is already very small; inspect it with view_crop.')
     del c.regions[region]
     c.records.pop(region, None)
@@ -362,12 +363,14 @@ def split_region(ctx: RunContext[Census], region: str) -> dict:
     c.reconciled.clear()
     c.submitted = False
     mx, my = (left + right) // 2, (top + bottom) // 2
-    children = {
-        f'{region}.{i}': box
-        for i, box in enumerate(
-            [[left, top, mx, my], [mx, top, right, my], [left, my, mx, bottom], [mx, my, right, bottom]]
-        )
-    }
+    if width < 100:
+        # A thin edge strip can still hold many animals: split along its long side only.
+        boxes = [[left, top, right, my], [left, my, right, bottom]]
+    elif height < 100:
+        boxes = [[left, top, mx, bottom], [mx, top, right, bottom]]
+    else:
+        boxes = [[left, top, mx, my], [mx, top, right, my], [left, my, mx, bottom], [mx, my, right, bottom]]
+    children = {f'{region}.{i}': box for i, box in enumerate(boxes)}
     c.regions.update(children)
     c.focus = None
     c.save()
