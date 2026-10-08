@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import fcntl
 import json
 import os
 import shutil
@@ -15,13 +16,36 @@ from time import time_ns
 import logfire
 from opentelemetry import trace
 
-from wildlife_counter.counting_agent import PROMPT, Census, census_preview
+from wildlife_counter.config import settings
+from wildlife_counter.counting_agent import Census, census_preview, prompt_for
 from wildlife_counter.counting_codex import cli_instructions, restore_ledger, write_source
 
 _tracer = trace.get_tracer('wildlife_counter.counting_claude')
 
 
+async def _claude_turn() -> int:
+    """Machine-wide lock: at most one Claude subscription run at a time, across every process."""
+    path = settings.sandbox_work_dir / 'claude-subscription.lock'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT)
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fd
+        except BlockingIOError:
+            await asyncio.sleep(5)
+
+
 async def run_claude(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]]):
+    fd = await _claude_turn()
+    try:
+        await _run_claude_span(run, census, persist)
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
+async def _run_claude_span(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]]):
     model = run['model'].split(':')[-1]
     effort = run.setdefault('reasoning_effort', 'high')
     with logfire.span(
@@ -97,7 +121,7 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
         '--allowedTools',
         'mcp__census__*',
         '--system-prompt',
-        PROMPT,
+        prompt_for(census.species),
     ]
     run['billing'] = 'Claude subscription; API equivalent is informational, not an API charge.'
     with (census.work_dir / 'claude-stderr.log').open('wb') as stderr:

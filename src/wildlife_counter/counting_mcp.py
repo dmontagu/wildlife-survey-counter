@@ -27,6 +27,7 @@ def main():
         config['height'],
         region_size=config.get('region_size', 1600),
         final_review=config.get('final_review', True),
+        species=config.get('species', 'elk'),
     )
     ctx = cast(RunContext[impl.Census], SimpleNamespace(deps=census))
     server = FastMCP('elk-census')

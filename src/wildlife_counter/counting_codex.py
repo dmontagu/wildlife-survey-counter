@@ -15,7 +15,7 @@ from time import time_ns
 import logfire
 from opentelemetry import trace
 
-from wildlife_counter.counting_agent import PROMPT, Census, Point, PossiblePoint, census_preview, owns
+from wildlife_counter.counting_agent import Census, Point, PossiblePoint, census_preview, owns, prompt_for
 from wildlife_counter.pricing import api_equivalent_cost
 
 # Tool calls run inside the Codex subprocess; we rebuild them as spans from its event stream.
@@ -34,6 +34,7 @@ def write_source(census: Census):
                 'height': census.height,
                 'region_size': census.region_size,
                 'final_review': census.final_review,
+                'species': census.species,
             }
         )
     )
@@ -167,7 +168,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
         f'mcp_servers.census.env.PYTHONPATH={json.dumps(package_root)}',
         '-',
     ]
-    prompt = PROMPT + '\n' + cli_instructions(census)
+    prompt = prompt_for(census.species) + '\n' + cli_instructions(census)
     run['billing'] = 'ChatGPT/Codex subscription; API equivalent is informational, not an API charge.'
     with (census.work_dir / 'codex-stderr.log').open('wb') as stderr:
         proc = await asyncio.create_subprocess_exec(

@@ -141,7 +141,9 @@ class Method:
         return ', '.join(parts)
 
 
-async def count_image(image: Path, model: str, effort: str, method: Method | None = None) -> CountOutput:
+async def count_image(
+    image: Path, model: str, effort: str, method: Method | None = None, species: str = 'elk'
+) -> CountOutput:
     method = method or Method()
     with Image.open(image) as im:
         width, height = im.size
@@ -149,7 +151,13 @@ async def count_image(image: Path, model: str, effort: str, method: Method | Non
     slug = f'{method.region_size}{"" if method.final_review else "-nofinal"}'
     work_dir = (WORK_ROOT / f'{image.stem}-{model}-{effort}-{slug}-{run_id[:8]}').resolve()
     census = Census(
-        image.resolve(), work_dir, width, height, region_size=method.region_size, final_review=method.final_review
+        image.resolve(),
+        work_dir,
+        width,
+        height,
+        region_size=method.region_size,
+        final_review=method.final_review,
+        species=species,
     )
     runner = run_claude if model.startswith('claude') else run_codex
     run: dict[str, Any] = dict(

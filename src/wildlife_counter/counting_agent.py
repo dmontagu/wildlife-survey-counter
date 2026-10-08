@@ -48,6 +48,8 @@ class Census:
     # Method knobs for evals: initial tile size, and whether the cross-region final review is required.
     region_size: int = 1600
     final_review: bool = True
+    # The prompt is written for elk; other species get an explicit override in the run instructions.
+    species: str = 'elk'
     _pixels: Image.Image | None = field(default=None, repr=False, compare=False)
 
     def pixels(self) -> Image.Image:
@@ -198,6 +200,48 @@ Keep tool arguments and progress explanations concise. Group independent inspect
 useful. There is no arbitrary Python tool; use the provided image functions. Animal classification
 is separate: count unclassified elk without inventing age/sex. Existing annotations are not supplied.
 """
+
+
+def prompt_for(species: str) -> str:
+    """The census prompt for a species (plural, e.g. 'ducks'); elk get the original prompt unchanged."""
+    if species == 'elk':
+        return PROMPT
+    edits = [
+        ('Count visible elk through', f'Count visible {species} through'),
+        (
+            '2. detect_candidates optionally runs the elk-specific detector once. It is a proposer, not a\n'
+            'counter: shadows, heads and vegetation frequently receive high confidence. Inspect source crops\n'
+            'before deciding. You may inspect proposals for recall but must search unmarked areas too.',
+            f'2. detect_candidates is an elk-only detector and does not apply to {species}; do not call it.\n'
+            'Find every animal by inspecting source pixels directly.',
+        ),
+        ('4. record_region stores torso points', '4. record_region stores body-center points'),
+        ('nearby elk at similar depth', f'nearby {species} at similar depth'),
+        ('Bedded animals may be tiny', 'Distant or resting animals may be tiny'),
+        (
+            "For every close group, trace each elk's rump/torso continuously\n"
+            'through its neck to its head and legs; a long diagonal neck or a disconnected visible body segment\n'
+            'is not an additional torso. In rear-facing standing elk, one white rump and its connected torso\n'
+            'often give a better identity anchor than brown shapes among overlapping necks. In bedded elk,\n'
+            'compare distinct torso outlines and heads to nearby bedded exemplars.',
+            'For every close group, trace each body outline separately; a head, a raised wing, a\n'
+            'reflection or a shadow is not an additional animal. Compare distinct body outlines and heads\n'
+            'to clear nearby exemplars of similar size. Count animals cut off by the image edge once if\n'
+            'their body is visibly inside the frame.',
+        ),
+        ('Count each torso only', 'Count each body only'),
+        (
+            'count unclassified elk without inventing age/sex.',
+            f'count all {species} without inventing species, age or sex.',
+        ),
+    ]
+    text = PROMPT
+    for old, new in edits:
+        if old not in text:
+            raise RuntimeError(f'Census prompt changed; update prompt_for: {old[:40]!r}')
+        text = text.replace(old, new)
+    return text
+
 
 counting_agent = Agent(deps_type=Census, system_prompt=PROMPT, retries=3)
 
@@ -358,7 +402,8 @@ def record_region(
     c.reconciled.clear()
     c.submitted = False
     c.save()
-    return f'Recorded {len(points)} elk and {len(uncertain)} possible extras; inspect review overlay next.'
+    noun = 'elk' if c.species == 'elk' else c.species
+    return f'Recorded {len(points)} {noun} and {len(uncertain)} possible extras; inspect review overlay next.'
 
 
 @counting_agent.tool(sequential=True)
@@ -412,6 +457,8 @@ def propose(image_path: Path, width: int, height: int) -> list[dict] | None:
 async def detect_candidates(ctx: RunContext[Census]) -> dict:
     """Run the optional elk detector once on overlapping 640px crops. Raw proposals are review aids."""
     c = ctx.deps
+    if c.species != 'elk':
+        return {'available': False, 'reason': f'The detector is elk-only; inspect source pixels for {c.species}.'}
     if not settings.counting_weights.is_file():
         return {'available': False, 'reason': 'No elk detector weights configured; use direct source inspection.'}
     if (c.work_dir / 'proposals.json').exists():
