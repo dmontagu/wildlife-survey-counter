@@ -90,8 +90,27 @@ test-ts:
 test-ts-watch:
 	cd src/frontend && npx vitest $(ARGS)
 
+.PHONY: test-py
+test-py:
+	@echo "Run Python tests"
+	uv run --with pytest --with pytest-asyncio python -m pytest tests -q
+
 .PHONY: test
-test: test-ts
+test: test-ts test-py
+
+# Census evals (Logfire): one experiment per model/effort over research/eval_dataset/.
+# Runs through the Codex CLI on the ChatGPT subscription; e.g. `make eval MODEL=gpt-5.6-luna EFFORT=medium`.
+MODEL ?= gpt-5.6-luna
+EFFORT ?= high
+EVAL_CONCURRENCY ?= 3
+.PHONY: eval
+eval:
+	env -u OPENAI_API_KEY -u CODEX_API_KEY uv run python -m scripts.census_evals run --model $(MODEL) --effort $(EFFORT) --concurrency $(EVAL_CONCURRENCY) $(ARGS)
+
+# Every candidate model at high effort, sequentially, so they don't compete for rate limits.
+.PHONY: eval-all
+eval-all:
+	for m in gpt-5.6-luna gpt-5.6-terra gpt-5.6-sol gpt-6-astra; do $(MAKE) eval MODEL=$$m || exit 1; done
 
 .PHONY: clean
 clean:

@@ -10,8 +10,18 @@ import signal
 import sys
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from time import time_ns
+
+import logfire
+from opentelemetry import trace
 
 from wildlife_counter.counting_agent import PROMPT, Census, Point, PossiblePoint, census_preview, owns
+from wildlife_counter.pricing import api_equivalent_cost
+
+# Tool calls run inside the Codex subprocess; we rebuild them as spans from its event stream.
+# Raw OTel spans take explicit start/end times without becoming the current context, so parallel
+# tool calls can overlap under the run span.
+_tracer = trace.get_tracer('wildlife_counter.counting_codex')
 
 
 def restore_ledger(census: Census):
@@ -57,6 +67,37 @@ def restore_ledger(census: Census):
 
 
 async def run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]]):
+    model = run['model'].split(':')[-1]
+    effort = run.setdefault('reasoning_effort', 'high')
+    with logfire.span(
+        'codex census {model} ({effort}) on {image}',
+        model=model,
+        effort=effort,
+        image=run.get('image_filename', census.image_path.name),
+        run_id=run.get('id'),
+        **{'gen_ai.system': 'openai', 'gen_ai.request.model': model},
+    ) as span:
+        try:
+            await _run_codex(run, census, persist, model, effort)
+        finally:
+            usage = run.get('usage') or {}
+            span.set_attributes(
+                {
+                    'gen_ai.response.model': model,
+                    'gen_ai.usage.input_tokens': usage.get('input_tokens', 0),
+                    'gen_ai.usage.cache_read_tokens': usage.get('cache_read_tokens', 0),
+                    'gen_ai.usage.output_tokens': usage.get('output_tokens', 0),
+                    'tool_calls': run.get('tool_calls', 0),
+                    'submitted': census.submitted,
+                }
+            )
+            if run.get('estimated_cost_usd') is not None:
+                span.set_attribute('operation.cost', run['estimated_cost_usd'])
+            if run.get('error'):
+                span.set_level('error')
+
+
+async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]], model: str, effort: str):
     executable = shutil.which('codex')
     if not executable:
         raise RuntimeError('Install Codex CLI and sign in with ChatGPT to use subscription counting.')
@@ -87,13 +128,13 @@ async def run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitab
         '-C',
         str(census.work_dir),
         '-m',
-        run['model'].split(':')[-1],
+        model,
         '-c',
         'forced_login_method="chatgpt"',
         '-c',
         'approval_policy="never"',
         '-c',
-        'model_reasoning_effort="high"',
+        f'model_reasoning_effort="{effort}"',
         '-c',
         f'mcp_servers.census.command={json.dumps(sys.executable)}',
         '-c',
@@ -129,6 +170,7 @@ async def run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitab
             proc.stdin.write(prompt.encode())
             await proc.stdin.drain()
             proc.stdin.close()
+            tool_spans: dict[str, trace.Span] = {}
             with (census.work_dir / 'codex-events.jsonl').open('wb') as events:
                 async for line in proc.stdout:
                     events.write(line)
@@ -140,8 +182,26 @@ async def run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitab
                     item = event.get('item', {})
                     if item.get('type') == 'mcp_tool_call':
                         run['progress'] = f'Reviewing image: {item.get("tool", "census")}'
+                        if event.get('type') == 'item.started':
+                            tool_spans[item['id']] = _tracer.start_span(
+                                f'tool {item.get("tool")}',
+                                start_time=time_ns(),
+                                attributes={
+                                    'logfire.msg': f'tool {item.get("tool")} {json.dumps(item.get("arguments") or {})}',
+                                    'gen_ai.tool.name': item.get('tool', ''),
+                                    'tool_arguments': json.dumps(item.get('arguments') or {}),
+                                },
+                            )
+                        elif event.get('type') == 'item.completed' and item['id'] in tool_spans:
+                            tool_span = tool_spans.pop(item['id'])
+                            run['tool_calls'] = run.get('tool_calls', 0) + 1
+                            if item.get('error'):
+                                tool_span.set_attribute('error', str(item['error'])[:2000])
+                                tool_span.set_attribute('logfire.level_num', 17)
+                            tool_span.end(end_time=time_ns())
                     elif item.get('type') == 'agent_message':
                         run['last_update'] = item.get('text', '')[:1000]
+                        logfire.info('agent message: {text}', text=item.get('text', ''))
                     if event.get('type') == 'turn.completed':
                         u = event['usage']
                         run['usage'] = dict(
@@ -150,13 +210,10 @@ async def run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitab
                             output_tokens=u.get('output_tokens', 0),
                         )
                         # Long-context/service-tier details are not exposed here: don't invent an invoice.
-                        if run['model'].split(':')[-1] == 'gpt-6-astra':
-                            fresh = max(0, u.get('input_tokens', 0) - u.get('cached_input_tokens', 0))
-                            run['estimated_cost_usd'] = round(
-                                (fresh * 10 + u.get('cached_input_tokens', 0) + u.get('output_tokens', 0) * 50)
-                                / 1_000_000,
-                                6,
-                            )
+                        run['estimated_cost_usd'] = api_equivalent_cost(
+                            model, u.get('input_tokens', 0), u.get('cached_input_tokens', 0), u.get('output_tokens', 0)
+                        )
+                        if run['estimated_cost_usd'] is not None:
                             run['cost_basis'] = (
                                 'Standard short-context API equivalent only; subscription usage '
                                 'is not an API bill. Long-context premiums are not measured here.'

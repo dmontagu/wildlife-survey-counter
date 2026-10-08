@@ -24,6 +24,7 @@ from wildlife_counter.agent import now_iso
 from wildlife_counter.config import settings
 from wildlife_counter.counting_agent import Census, annotation, census_preview, counting_agent, crop_image
 from wildlife_counter.db import get_db
+from wildlife_counter.pricing import API_RATES
 
 router = APIRouter(prefix='/api/counting')
 tasks: dict[str, asyncio.Task] = {}
@@ -138,20 +139,13 @@ async def capabilities():
 def estimated_cost(messages: list) -> float | None:
     """Standard API estimate, per request; output already includes reasoning tokens.
 
-    Rates checked 2026-09-09 at https://developers.openai.com/api/docs/pricing.
     Unknown model prices remain unknown, never silently become zero.
     """
-    rates = {
-        'gpt-6-astra': (10, 1, 12.5, 50),
-        'gpt-5.6-sol': (4, 0.4, 5, 20),
-        'gpt-5.6-terra': (2, 0.2, 2.5, 12),
-        'gpt-5.6-luna': (0.2, 0.02, 0.25, 1.2),
-    }
     cost = 0.0
     for msg in messages:
         if not isinstance(msg, ModelResponse):
             continue
-        rate = rates.get(msg.model_name or '')
+        rate = API_RATES.get(msg.model_name or '')
         if rate is None:
             return None
         u = msg.usage

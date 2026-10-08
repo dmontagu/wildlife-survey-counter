@@ -14,6 +14,7 @@ src/
     counting_agent.py           Bounded image tools and enforced spatial review ledger
     counting_codex.py           ChatGPT-subscription Codex CLI runner; no API-key fallback
     counting_mcp.py             Local stdio MCP adapter for those same census tools
+    pricing.py                  API rate table for API-equivalent cost estimates
     db.py                       aiosqlite storage for detection runs (create/list/get/update)
     config.py                   pydantic-settings (env prefix: WSC_)
   frontend/                     React 19 + TypeScript labeling UI (see src/frontend/CLAUDE.md)
@@ -26,6 +27,8 @@ storage/                        All gitignored runtime data (see storage/README.
   wsc.db                        SQLite database of agent detection runs
 research/                       Experimental scripts — blob, CountGD, HerdNet, Grounding DINO
 scripts/                        One-off evaluation / batch-annotation scripts (YOLO, SAHI, cross-validation)
+  census_evals.py               Logfire evals of the census per model/effort (`make eval MODEL=...`)
+research/eval_dataset/          Frozen reference point sets for those evals (audits + gpt-6-astra runs)
 ```
 
 ## Running Locally

@@ -140,6 +140,27 @@ configured API provider. It has not been tested with paid calls. Do not select i
 for subscription-only experiments. Displayed subscription costs are approximate
 API equivalents, not charges; see [local results and limits](research/independent-census.md).
 
+### Evaluating models in Logfire
+
+`scripts/census_evals.py` runs the census over a frozen reference set with
+[pydantic-evals](https://ai.pydantic.dev/evals/), one experiment per model and reasoning
+effort, and sends the results to Logfire (Evals) when a Logfire token is configured.
+References in `research/eval_dataset/` come from the hand-checked audits in
+`research/census_reviews/` or, otherwise, from completed `gpt-6-astra` runs. They are
+fallible: scores measure agreement with astra, not verified accuracy.
+
+```bash
+make eval MODEL=gpt-5.6-luna EFFORT=medium   # one experiment
+make eval-all                                # luna, terra, sol, astra at high effort
+```
+
+Each case reports whether the review completed, count error, and localization: predicted
+points are matched one-to-one to reference points within half an animal's width, giving
+precision, recall and F1, so the right number of points in the wrong places scores ~0.
+Metrics include API-equivalent cost and tokens, and every Codex tool call appears in
+the case's trace. Counts run on the Codex subscription; the cost is an estimate, not a charge.
+Add references with `python -m scripts.census_evals build --count STEM ...`.
+
 ## Tech Stack
 
 - **Backend**: Python 3.13, FastAPI, OpenCV (headless), Pillow, pydantic-ai, SQLite (aiosqlite), Logfire
