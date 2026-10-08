@@ -10,6 +10,7 @@ import { useKeyboard } from '../hooks/useKeyboard'
 import type { ViewportActions } from '../hooks/useViewport'
 import { useAppState, useDispatch } from '../state'
 import type { Annotation, AppState } from '../types'
+import CountingPreviewOverlay from './CountingPreviewOverlay'
 
 type DragType =
   | 'select-rect'
@@ -799,6 +800,9 @@ export default function Canvas({ vp, onCanvasSize }: CanvasProps) {
         onMouseDownCapture={onMouseDownCapture}
         className="absolute top-0 left-0"
       />
+      {state.countingPreview && state.image && (
+        <CountingPreviewOverlay preview={state.countingPreview} vp={vp} visibility={state.markerVisibility} />
+      )}
     </div>
   )
 }

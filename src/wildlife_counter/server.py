@@ -16,6 +16,7 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
 from wildlife_counter.config import settings
+from wildlife_counter.counting import router as counting_router
 from wildlife_counter.detect import detect_animals
 
 # Sends only when a Logfire token is configured (LOGFIRE_TOKEN, or a .logfire/ credentials file
@@ -36,11 +37,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Initialize database
     await init_db(settings.db_path)
+    from wildlife_counter.counting import initialize, shutdown
 
-    yield
+    await initialize()
+    try:
+        yield
+    finally:
+        await shutdown()
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(counting_router)
 logfire.instrument_fastapi(app, excluded_urls='/api/health')
 
 app.add_middleware(

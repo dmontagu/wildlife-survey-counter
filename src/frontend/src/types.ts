@@ -43,7 +43,23 @@ export interface ImageInfo {
   basePath: string
 }
 
+/** Ephemeral AI output: never saved, exported, selectable, or part of undo history. */
+export interface CountingPreview {
+  regions: {
+    id: string
+    bounds: [number, number, number, number]
+    status: 'pending' | 'inspecting' | 'recorded' | 'checked'
+  }[]
+  points: { id: string; x: number; y: number; possible: boolean }[]
+  focus: [number, number, number, number] | null
+  phase: 'counting' | 'review'
+  neighborhoods_checked: number
+}
+
 export interface AppState {
+  countingPreview: CountingPreview | null
+  countingRequested: boolean
+  appliedCountingRunId: string | null
   image: ImageInfo | null
   annotations: Annotation[]
   selectedIds: Set<number>
@@ -104,6 +120,9 @@ export interface AnnotationPatch {
 }
 
 export type Action =
+  | { type: 'SET_COUNTING_PREVIEW'; imageId: string; preview: CountingPreview | null }
+  | { type: 'REQUEST_AI_COUNT'; imageId: string }
+  | { type: 'APPLY_AI_COUNT'; imageId: string; runId: string; baseline: string; annotations: Annotation[] }
   | { type: 'LOAD_IMAGE'; image: ImageInfo }
   | { type: 'LOAD_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'IMPORT_ANNOTATIONS'; annotations: Annotation[] }

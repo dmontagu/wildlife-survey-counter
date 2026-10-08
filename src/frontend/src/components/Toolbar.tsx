@@ -7,6 +7,7 @@ import { displayNameFor } from '../lib/image-names'
 import { useAppState, useDispatch } from '../state'
 import type { RecentImageRecord, ServerImageRecord } from '../types'
 import BrandMark from './BrandMark'
+import CountingControl from './CountingControl'
 import ShortcutKey from './ShortcutKey'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
@@ -150,6 +151,9 @@ export default function Toolbar({
         </div>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          {hasImage &&
+            (import.meta.env.VITE_AI_COUNTING === 'true' ||
+              (import.meta.env.DEV && import.meta.env.VITE_AI_COUNTING !== 'false')) && <CountingControl />}
           {hasImage && (
             <Button variant="outline" size="sm" onClick={onGoHome} aria-label="Home">
               <HomeIcon className="size-3.5" />

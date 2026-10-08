@@ -1,9 +1,13 @@
 import { createContext, type Dispatch, useContext } from 'react'
 import { categoryOption, DEFAULT_CATEGORY } from './config'
 import { normalizeAnnotations } from './lib/annotations'
+import { imageStorageId } from './lib/storage'
 import type { Action, Annotation, AnnotationPatch, AppState, UndoEntry } from './types'
 
 export const initialState: AppState = {
+  countingPreview: null,
+  countingRequested: false,
+  appliedCountingRunId: null,
   image: null,
   annotations: [],
   selectedIds: new Set(),
@@ -64,9 +68,19 @@ function cloneAnnotations(annotations: Annotation[]): Annotation[] {
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
+    case 'SET_COUNTING_PREVIEW':
+      if (!state.image || imageStorageId(state.image.filename, state.image.basePath) !== action.imageId) return state
+      if (state.countingPreview === action.preview) return state
+      return { ...state, countingPreview: action.preview }
+    case 'REQUEST_AI_COUNT':
+      if (!state.image || imageStorageId(state.image.filename, state.image.basePath) !== action.imageId) return state
+      return { ...state, countingRequested: true }
     case 'LOAD_IMAGE':
       return {
         ...state,
+        appliedCountingRunId: null,
+        countingRequested: false,
+        countingPreview: null,
         image: action.image,
         annotations: [],
         selectedIds: new Set(),
@@ -83,10 +97,19 @@ export function reducer(state: AppState, action: Action): AppState {
         redoStack: [],
       }
 
+    case 'APPLY_AI_COUNT':
     case 'IMPORT_ANNOTATIONS': {
+      if (
+        action.type === 'APPLY_AI_COUNT' &&
+        (!state.image ||
+          imageStorageId(state.image.filename, state.image.basePath) !== action.imageId ||
+          JSON.stringify(state.annotations) !== action.baseline ||
+          state.appliedCountingRunId === action.runId)
+      )
+        return state
       const nextAnnotations = normalizeAnnotations(action.annotations)
       const entry: UndoEntry = {
-        description: 'Import annotations JSON',
+        description: action.type === 'APPLY_AI_COUNT' ? 'AI count' : 'Import annotations JSON',
         replaceAll: {
           before: cloneAnnotations(state.annotations),
           after: cloneAnnotations(nextAnnotations),
@@ -95,6 +118,7 @@ export function reducer(state: AppState, action: Action): AppState {
 
       return {
         ...state,
+        appliedCountingRunId: action.type === 'APPLY_AI_COUNT' ? action.runId : state.appliedCountingRunId,
         annotations: nextAnnotations,
         selectedIds: new Set(),
         undoStack: [...state.undoStack, entry],

@@ -5,6 +5,7 @@ import { Blob as NodeBlob, File as NodeFile } from 'node:buffer'
 
 import { cleanup, configure } from '@testing-library/react'
 import { IDBFactory } from 'fake-indexeddb'
+import { FormData as NodeFormData } from 'undici'
 import { afterEach, beforeEach } from 'vitest'
 
 // jsdom's Blob and File are not structured-cloneable, so fake-indexeddb stores an empty object
@@ -12,6 +13,8 @@ import { afterEach, beforeEach } from 'vitest'
 // clone the way a browser does, which is the behaviour the image store is written against.
 globalThis.Blob = NodeBlob as unknown as typeof Blob
 globalThis.File = NodeFile as unknown as typeof File
+// Match the Node Blob/File constructors above when exercising real upload form construction.
+globalThis.FormData = NodeFormData as unknown as typeof FormData
 
 // jsdom implements neither of these, and the canvas renderer, the minimap, the viewport and
 // every export path touch them on mount. Stubbing them here keeps the shims in one place

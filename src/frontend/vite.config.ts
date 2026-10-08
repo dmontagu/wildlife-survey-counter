@@ -54,6 +54,7 @@ export default defineConfig({
     env: {
       // The sample gallery is dev-only and fetches /api/images; there is no backend under test.
       VITE_SHOW_SAMPLE_IMAGES: 'false',
+      VITE_AI_COUNTING: 'false',
     },
   },
 })

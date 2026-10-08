@@ -10,6 +10,10 @@ src/
     detect.py                   Blob detection pipeline (threshold, morphology, shadow-aware NMS)
     agent.py                    pydantic-ai detection agent — system prompt, tools, deps
     sandbox.py                  Sandbox ABC + SubprocessSandbox (runs agent code in a work dir)
+    counting.py                 Persistent local census jobs, review decisions, export API
+    counting_agent.py           Bounded image tools and enforced spatial review ledger
+    counting_codex.py           ChatGPT-subscription Codex CLI runner; no API-key fallback
+    counting_mcp.py             Local stdio MCP adapter for those same census tools
     db.py                       aiosqlite storage for detection runs (create/list/get/update)
     config.py                   pydantic-settings (env prefix: WSC_)
   frontend/                     React 19 + TypeScript labeling UI (see src/frontend/CLAUDE.md)
@@ -32,6 +36,10 @@ make dev      # Backend on :8100, frontend dev server on :5173 (with proxy)
 ```
 
 The frontend Vite config proxies `/api`, `/samples`, and `/uploads` to the backend at localhost:8100.
+For subscription-backed AI counting, use the separate opt-in local setup in README.md
+(`WSC_COUNTING_ENABLED=true`, `WSC_COUNTING_RUNNER=codex`, `VITE_AI_COUNTING=true`).
+Do not switch to the paid API runner for subscription-only testing. The current
+local test service uses ports 8110/5180 and a separate SQLite database.
 
 ## Backend
 
@@ -52,7 +60,7 @@ The frontend Vite config proxies `/api`, `/samples`, and `/uploads` to the backe
   - `GET /api/detections/{run_id}` — fetch one detection run
   - `GET /samples/*`, `GET /uploads/*` — static file serving for images
   - `GET /*` — SPA fallback (serves `src/frontend/dist/index.html`)
-- **Used by the UI**: only `GET /api/images`, and only in dev (`SHOW_DEV_SAMPLES`). `/api/upload`, `/api/detect`, `/api/agent-detect`, and `/api/detections` have no frontend caller today
+- **Used by the UI**: `GET /api/images` in dev (`SHOW_DEV_SAMPLES`), and `/api/counting/*` when AI counting is enabled. `/api/upload`, `/api/detect`, `/api/agent-detect`, and `/api/detections` have no frontend caller today
 - **Detection**: `wildlife_counter.detect` implements blob detection tuned for dark-on-light aerial imagery. Key parameters: threshold (auto-estimated from brightness), area_min/max (scaled by image resolution), shadow-aware NMS
 - **Agent detection**: `wildlife_counter.agent` runs a pydantic-ai agent (`WSC_DETECTION_MODEL`, default `anthropic:claude-sonnet-5`) with `run_python` / `read_file` / `submit_annotations` tools against a `SubprocessSandbox` work dir; runs are recorded in SQLite via `wildlife_counter.db`
 

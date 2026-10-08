@@ -96,3 +96,39 @@
     transition-duration: 0.01ms;
   }
 }
+
+@keyframes ai-region-pulse {
+  0%,
+  100% {
+    opacity: 0.08;
+  }
+  50% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes ai-preview-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ai-region-pulse {
+  animation: ai-region-pulse 2.4s ease-in-out infinite;
+}
+.ai-preview-marker {
+  animation: ai-preview-appear 350ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-region-pulse {
+    animation: none;
+    opacity: 0.12;
+  }
+  .ai-preview-marker {
+    animation: none;
+  }
+}

@@ -47,6 +47,39 @@ Config: `components.json` in the frontend root.
 ## Server
 The backend is a Python server (`src/wildlife_counter/server.py`) that serves images from `storage/samples/` and `storage/uploads/` directories. Vite proxies `/api`, `/samples`, and `/uploads` to `http://localhost:8100`.
 
+`CountingControl.tsx` provides opt-in AI counting through `/api/counting/*`.
+The toolbar's **Count elk** action starts background work and polls progress; there
+is no counting modal. On opening an image it reconnects to active work or reuses the
+latest completed run by private browser identity plus source SHA-256, even if a newer attempt failed. The completed
+button reads **Count saved** and is disabled. POST also deduplicates transactionally;
+only an explicit `force=true` bypasses completed results (never active work).
+The toolbar also shows the run's stored cost estimate when available, including for
+cached results. Codex subscription runs are labeled as an estimated API equivalent,
+not an actual charge. Reusing results never recalculates or adds to the cost.
+Active runs expose a replaceable `preview` snapshot (regions, provisional points,
+latest inspected bounds, review phase). `CountingControl` sends it through the
+image-guarded `SET_COUNTING_PREVIEW` action; `CountingPreviewOverlay` renders a
+separate pointer-transparent SVG above the canvas. This state never enters the
+annotation array, autosave, exports, selection, or undo. Clear it on terminal status,
+unmount, or image switch. Its viewport follows pan/zoom; CSS animates only the SVG,
+not the full photo, and honors reduced motion. Empty snapshots replace prior points.
+
+`countingRequest` attaches a persistent random `X-Counting-Client` credential from
+`wsc:counting-client:v1`; this is a browser profile identity until accounts exist.
+Every counting read and mutation is owner-scoped; unowned legacy runs are never shared. Completed detections, including possible animals, become ordinary unconfirmed
+markers through the image-guarded, undoable `APPLY_AI_COUNT` action. Existing reviewed
+labels and edits made during a run require an inline replacement action. `REQUEST_AI_COUNT`
+marks the image as work in progress so an unlabeled upload is kept in Recent Work.
+Valid predicted categories are
+preserved independently of review status; the current agent still counts unclassified elk.
+Request metadata (`wsc:ai-count-request:<image id>`, version 1) stores a run id and
+the initial annotation snapshot. A separate `wsc:ai-count-applied:<image id>` receipt
+is written by App only after saving annotations. Undo retains the receipt, so revisiting
+an image cannot resurrect an undone result. Annotation JSON stays in its existing format.
+`VITE_AI_COUNTING=true` enables the button in a production build; it is shown by
+default in development and disabled in general app tests. The backend must also
+enable counting. See root README.md for the local Codex subscription setup.
+
 ## Testing
 
 **Vitest** + **Testing Library** in a jsdom environment. Config lives in the `test` block of

@@ -35,6 +35,7 @@ import {
   isBrowserImageBasePath,
   saveBrowserImage,
 } from './lib/browser-images'
+import { countingAppliedKey } from './lib/counting'
 import {
   exportAnnotatedImage,
   exportCombinedJsonOnly,
@@ -74,6 +75,8 @@ import type {
 } from './types'
 
 interface PendingSave {
+  countingRequested: boolean
+  countingRunId: string | null
   filename: string
   displayName: string | null
   basePath: string
@@ -423,6 +426,8 @@ export default function App() {
       (record) => record.filename === pending.filename && record.basePath === pending.basePath,
     )
     const isUntouchedBrowserUpload =
+      !pending.countingRequested &&
+      pending.countingRunId === null &&
       isBrowserImageBasePath(pending.basePath) &&
       existingRecord === undefined &&
       existingSavedAnnotations === null &&
@@ -457,6 +462,11 @@ export default function App() {
     }
 
     const summary = summarizeAnnotations(pending.annotations)
+    // Acknowledge AI delivery only after the annotations themselves are safely stored.
+    // Undo keeps the acknowledgement, so reopening never reapplies a count the reviewer undid.
+    if (pending.countingRunId) {
+      safeSetItem(countingAppliedKey(pending.filename, pending.basePath), pending.countingRunId)
+    }
     // Per-class counts come from the category table, so a new class needs no edit here.
     const categoryCounts = {} as Record<CategorySummaryKey, number>
     for (const option of ELK_CATEGORY_OPTIONS) categoryCounts[option.summaryKey] = summary[option.summaryKey]
@@ -480,6 +490,8 @@ export default function App() {
   useEffect(() => {
     if (!state.image) return
     pendingSaveRef.current = {
+      countingRequested: state.countingRequested,
+      countingRunId: state.appliedCountingRunId,
       filename: state.image.filename,
       displayName: state.image.displayName,
       basePath: state.image.basePath,
@@ -489,7 +501,7 @@ export default function App() {
     }
     const timer = setTimeout(flushAnnotationSave, 500)
     return () => clearTimeout(timer)
-  }, [state.image, state.annotations, flushAnnotationSave])
+  }, [state.image, state.annotations, state.appliedCountingRunId, state.countingRequested, flushAnnotationSave])
 
   // The 500ms debounce would drop a change made just before the tab is hidden or closed, so flush
   // any pending save on visibilitychange=hidden and on pagehide.
