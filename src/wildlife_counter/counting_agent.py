@@ -45,6 +45,9 @@ class Census:
     submitted: bool = False
     summary: str = ''
     focus: list[int] | None = None
+    # Method knobs for evals: initial tile size, and whether the cross-region final review is required.
+    region_size: int = 1600
+    final_review: bool = True
     _pixels: Image.Image | None = field(default=None, repr=False, compare=False)
 
     def pixels(self) -> Image.Image:
@@ -57,13 +60,14 @@ class Census:
     def __post_init__(self):
         self.work_dir.mkdir(parents=True, exist_ok=True)
         if not self.regions:
-            for y in range(0, self.height, 1600):
-                for x in range(0, self.width, 1600):
-                    self.regions[f'r{y // 1600}c{x // 1600}'] = [
+            size = self.region_size
+            for y in range(0, self.height, size):
+                for x in range(0, self.width, size):
+                    self.regions[f'r{y // size}c{x // size}'] = [
                         x,
                         y,
-                        min(x + 1600, self.width),
-                        min(y + 1600, self.height),
+                        min(x + size, self.width),
+                        min(y + size, self.height),
                     ]
 
     def snapshot(self) -> dict:
@@ -95,6 +99,8 @@ class Census:
 
     def neighborhoods(self) -> dict[str, list[int]]:
         """Final review uses a different spatial grid and wider context than counting regions."""
+        if not self.final_review:
+            return {}
         points, uncertain = self.output()
         groups = {}
         for p in points + uncertain:

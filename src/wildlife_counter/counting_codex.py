@@ -24,6 +24,32 @@ from wildlife_counter.pricing import api_equivalent_cost
 _tracer = trace.get_tracer('wildlife_counter.counting_codex')
 
 
+def write_source(census: Census):
+    """Everything the stdio MCP server needs to rebuild the same Census in its own process."""
+    (census.work_dir / 'source.json').write_text(
+        json.dumps(
+            {
+                'image_path': str(census.image_path),
+                'width': census.width,
+                'height': census.height,
+                'region_size': census.region_size,
+                'final_review': census.final_review,
+            }
+        )
+    )
+
+
+def cli_instructions(census: Census) -> str:
+    text = (
+        'Use the census MCP tools. Do not use other applications, search the web, read '
+        'reference labels, or modify the repository. The MCP server owns the image and ledger. '
+        'Call get_ledger first; finish_census when done. Your final text should briefly report the count.'
+    )
+    if not census.final_review:
+        text += ' Final neighborhood reconciliation (step 6) is disabled for this run; skip it.'
+    return text
+
+
 def restore_ledger(census: Census):
     data = json.loads((census.work_dir / 'ledger.json').read_text())
     regions = data['regions']
@@ -101,15 +127,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
     executable = shutil.which('codex')
     if not executable:
         raise RuntimeError('Install Codex CLI and sign in with ChatGPT to use subscription counting.')
-    (census.work_dir / 'source.json').write_text(
-        json.dumps(
-            {
-                'image_path': str(census.image_path),
-                'width': census.width,
-                'height': census.height,
-            }
-        )
-    )
+    write_source(census)
     environment = dict(os.environ)
     for key in ('OPENAI_API_KEY', 'CODEX_API_KEY', 'ANTHROPIC_API_KEY'):
         environment.pop(key, None)
@@ -149,11 +167,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
         f'mcp_servers.census.env.PYTHONPATH={json.dumps(package_root)}',
         '-',
     ]
-    prompt = (
-        PROMPT + '\nUse the census MCP tools. Do not use other applications, search the web, read '
-        'reference labels, or modify the repository. The MCP server owns the image and ledger. '
-        'Call get_ledger first; finish_census when done. Your final text should briefly report the count.'
-    )
+    prompt = PROMPT + '\n' + cli_instructions(census)
     run['billing'] = 'ChatGPT/Codex subscription; API equivalent is informational, not an API charge.'
     with (census.work_dir / 'codex-stderr.log').open('wb') as stderr:
         proc = await asyncio.create_subprocess_exec(

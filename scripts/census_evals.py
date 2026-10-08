@@ -10,8 +10,9 @@ It is fallible: astra-derived references measure agreement with astra, not verif
     # One experiment per model/effort; results appear under Evals in Logfire
     .venv/bin/python -m scripts.census_evals run --model gpt-5.6-luna --effort high
 
-Every count runs through the Codex CLI on the ChatGPT subscription (no API spend). Costs are
-standard short-context API equivalents of the reported token usage, not charges.
+Every count runs on a subscription, never an API key: `claude-*` models through the Claude Code
+CLI, everything else through the Codex CLI on ChatGPT. Costs are API-list equivalents of the
+reported token usage, not charges. --region-size and --no-final-review vary the method.
 
 Scores: count error (signed, absolute, %) on the final number, and localization via one-to-one
 Hungarian matching of predicted to reference points within `match_radius_px` (half an animal):
@@ -44,6 +45,7 @@ from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorCont
 from scipy.optimize import linear_sum_assignment
 
 from wildlife_counter.counting_agent import Census
+from wildlife_counter.counting_claude import run_claude
 from wildlife_counter.counting_codex import run_codex
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -125,17 +127,36 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-async def count_image(image: Path, model: str, effort: str) -> CountOutput:
+@dataclass
+class Method:
+    """How the census is run, independent of the model: initial tile size and the final review pass."""
+
+    region_size: int = 1600
+    final_review: bool = True
+
+    def label(self) -> str:
+        parts = [] if self.region_size == 1600 else [f'tiles {self.region_size}']
+        if not self.final_review:
+            parts.append('no final review')
+        return ', '.join(parts)
+
+
+async def count_image(image: Path, model: str, effort: str, method: Method | None = None) -> CountOutput:
+    method = method or Method()
     with Image.open(image) as im:
         width, height = im.size
     run_id = uuid.uuid4().hex
-    work_dir = (WORK_ROOT / f'{image.stem}-{model}-{effort}-{run_id[:8]}').resolve()
-    census = Census(image.resolve(), work_dir, width, height)
+    slug = f'{method.region_size}{"" if method.final_review else "-nofinal"}'
+    work_dir = (WORK_ROOT / f'{image.stem}-{model}-{effort}-{slug}-{run_id[:8]}').resolve()
+    census = Census(
+        image.resolve(), work_dir, width, height, region_size=method.region_size, final_review=method.final_review
+    )
+    runner = run_claude if model.startswith('claude') else run_codex
     run: dict[str, Any] = dict(
         id=run_id,
         image_filename=image.name,
         model=model,
-        runner='codex',
+        runner='claude' if runner is run_claude else 'codex',
         reasoning_effort=effort,
         usage={},
         estimated_cost_usd=None,
@@ -145,7 +166,7 @@ async def count_image(image: Path, model: str, effort: str) -> CountOutput:
         pass
 
     try:
-        await run_codex(run, census, persist)
+        await runner(run, census, persist)
     except Exception as exc:
         run['error'] = str(exc)
     points, possible = census.output() if census.submitted else ([], [])
@@ -246,12 +267,12 @@ def load_dataset(names: list[str] | None = None) -> Dataset[CountInput, CountOut
     )
 
 
-def make_task(model: str, effort: str):
+def make_task(model: str, effort: str, method: Method):
     async def census_task(inputs: CountInput) -> CountOutput:
         image = BASE_DIR / inputs.image
         if sha256(image) != inputs.sha256:
             raise ValueError(f'{image} does not match the reference hash')
-        output = await count_image(image, model, effort)
+        output = await count_image(image, model, effort, method)
         if output.cost_usd is not None:
             increment_eval_metric('cost_usd', output.cost_usd)
         increment_eval_metric('input_tokens', output.input_tokens)
@@ -402,12 +423,20 @@ async def build(args: argparse.Namespace) -> None:
 
 async def run(args: argparse.Namespace) -> None:
     dataset = load_dataset(args.cases or None)
-    name = args.name or f'{args.model} ({args.effort})'
+    method = Method(region_size=args.region_size, final_review=not args.no_final_review)
+    detail = ', '.join(filter(None, [args.effort, method.label()]))
+    name = args.name or f'{args.model} ({detail})'
     report = await dataset.evaluate(
-        make_task(args.model, args.effort),
+        make_task(args.model, args.effort, method),
         name=name,
         max_concurrency=args.concurrency,
-        metadata=dict(model=args.model, reasoning_effort=args.effort, runner='codex'),
+        metadata=dict(
+            model=args.model,
+            reasoning_effort=args.effort,
+            runner='claude' if args.model.startswith('claude') else 'codex',
+            region_size=method.region_size,
+            final_review=method.final_review,
+        ),
     )
     report.print(include_input=False, include_output=False, include_durations=True)
 
@@ -423,7 +452,9 @@ def main() -> None:
     b.add_argument('--size', nargs='*', default=[], help='override animal size: STEM=PX')
     r = sub.add_parser('run', help='run one experiment (model + effort) over the dataset')
     r.add_argument('--model', required=True)
-    r.add_argument('--effort', default='high', choices=['minimal', 'low', 'medium', 'high', 'xhigh'])
+    r.add_argument('--effort', default='high', choices=['minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
+    r.add_argument('--region-size', type=int, default=1600, help='initial census tile size in source pixels')
+    r.add_argument('--no-final-review', action='store_true', help='skip the cross-region neighborhood review')
     r.add_argument('--concurrency', type=int, default=3)
     r.add_argument('--cases', nargs='*', help='limit to these image stems')
     r.add_argument('--name', help='experiment name (default: "MODEL (EFFORT)")')

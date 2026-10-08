@@ -20,7 +20,14 @@ from wildlife_counter import counting_agent as impl
 def main():
     work_dir = Path(sys.argv[1]).resolve()
     config = json.loads((work_dir / 'source.json').read_text())
-    census = impl.Census(Path(config['image_path']), work_dir, config['width'], config['height'])
+    census = impl.Census(
+        Path(config['image_path']),
+        work_dir,
+        config['width'],
+        config['height'],
+        region_size=config.get('region_size', 1600),
+        final_review=config.get('final_review', True),
+    )
     ctx = cast(RunContext[impl.Census], SimpleNamespace(deps=census))
     server = FastMCP('elk-census')
     local_tools = ToolAnnotations(destructiveHint=False, openWorldHint=False)
