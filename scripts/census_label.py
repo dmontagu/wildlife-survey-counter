@@ -29,13 +29,24 @@ def render(image: Path, points: list[dict], possible: list[dict], title: str, ou
     scale = max(1.0, 2400 / max(canvas.size))
     canvas = canvas.resize((round(canvas.width * scale), round(canvas.height * scale)))
     draw = ImageDraw.Draw(canvas)
-    r = max(5, round(canvas.width / 400))
+    # Size markers to the animals: dense scenes (many points) get smaller markers so they don't overlap.
+    r = max(
+        5, min(round(canvas.width / 160), round(0.35 * (canvas.width * canvas.height / max(1, len(points))) ** 0.5))
+    )
     for color, group in (('#00ff40', points), ('orange', possible)):
         for i, p in enumerate(group, 1):
             x, y = p['x'] * scale, p['y'] * scale
-            draw.ellipse((x - r, y - r, x + r, y + r), outline=color, width=2)
+            draw.ellipse((x - r, y - r, x + r, y + r), outline=color, width=max(2, r // 4))
+            draw.ellipse((x - 2, y - 2, x + 2, y + 2), fill=color)
             label = str(i) if color != 'orange' else f'?{i}'
-            draw.text((x + r + 1, y - 2 * r), label, fill=color, stroke_width=2, stroke_fill='black', font_size=2 * r)
+            draw.text(
+                (x + r + 2, y - r),
+                label,
+                fill=color,
+                stroke_width=3,
+                stroke_fill='black',
+                font_size=max(12, round(1.4 * r)),
+            )
     bar = round(canvas.width / 45)
     draw.rectangle((0, 0, canvas.width, bar + 12), fill='black')
     draw.text((10, 6), title, fill='white', font_size=bar)
@@ -79,6 +90,34 @@ async def label(image: Path, spec: str, species: str, region_size: int) -> dict:
     )
 
 
+def rerender(images: list[Path], species: str) -> None:
+    """Redraw every finished run of these images from its saved ledger (latest run per model wins)."""
+    from scripts.census_router import RUN_DIR
+
+    work_root = BASE_DIR / 'storage' / 'sandbox' / 'evals'
+    for image in images:
+        runs = sorted(work_root.glob(f'{image.stem}-*'), key=lambda d: d.stat().st_mtime)
+        for run_dir in runs:
+            m = RUN_DIR.match(run_dir.name)
+            if not m or m['image'] != image.stem or not (run_dir / 'run.json').exists():
+                continue
+            run = json.loads((run_dir / 'run.json').read_text())
+            ledger = json.loads((run_dir / 'ledger.json').read_text())
+            points = [p for rid in ledger['regions'] for p in ledger['records'].get(rid, {}).get('points', [])]
+            possible = [p for rid in ledger['regions'] for p in ledger['records'].get(rid, {}).get('uncertain', [])]
+            nofinal = bool(m['nofinal'])
+            cost = run.get('estimated_cost_usd')
+            title = (
+                f'{image.name} | {m["model"]} {m["effort"]}{" no-final" if nofinal else ""} | '
+                f'{len(points)} {species} (+{len(possible)} possible, orange) | '
+                f'{f"${cost:.2f}" if cost is not None else "cost n/a"} API-equiv'
+                f'{"" if ledger.get("submitted") else " INCOMPLETE"}'
+            )
+            out = OUT_DIR / image.stem / f'{m["model"]}-{m["effort"]}{"-nofinal" if nofinal else ""}.jpg'
+            render(image, points, possible, title, out)
+            print(f'{out.relative_to(BASE_DIR)}: {title}')
+
+
 async def main_async(args: argparse.Namespace) -> None:
     jobs = [label(image, spec, args.species, args.region_size) for spec in args.models for image in args.images]
     results = await asyncio.gather(*jobs)
@@ -92,11 +131,17 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('images', nargs='+', type=Path)
-    parser.add_argument('--models', nargs='+', required=True, help='MODEL:EFFORT[:nofinal]')
+    parser.add_argument('--models', nargs='+', default=[], help='MODEL:EFFORT[:nofinal]')
+    parser.add_argument('--rerender', action='store_true', help='redraw finished runs; runs no models')
     parser.add_argument('--species', default='elk', help='plural, e.g. ducks')
     parser.add_argument('--region-size', type=int, default=1600)
     args = parser.parse_args()
     args.images = [p.resolve() for p in args.images]
+    if args.rerender:
+        rerender(args.images, args.species)
+        return
+    if not args.models:
+        parser.error('--models is required unless --rerender')
     logfire.configure(send_to_logfire='if-token-present', service_name='elk-census-labels', console=False)
     asyncio.run(main_async(args))
 
