@@ -45,6 +45,14 @@ class Census:
     submitted: bool = False
     summary: str = ''
     focus: list[int] | None = None
+    _pixels: Image.Image | None = field(default=None, repr=False, compare=False)
+
+    def pixels(self) -> Image.Image:
+        """Decode the source once per run; re-decoding a 60MP JPEG for every crop dominated CPU."""
+        if self._pixels is None:
+            with Image.open(self.image_path) as original:
+                self._pixels = original.convert('RGB')
+        return self._pixels
 
     def __post_init__(self):
         self.work_dir.mkdir(parents=True, exist_ok=True)
@@ -207,8 +215,7 @@ def get_ledger(ctx: RunContext[Census]) -> dict:
 
 def crop_image(c: Census, box: list[int], points: list[dict], boundary: list[int] | None = None) -> BinaryContent:
     x0, y0, x1, y1 = box
-    with Image.open(c.image_path) as original:
-        im = original.convert('RGB').crop((x0, y0, x1, y1))
+    im = c.pixels().crop((x0, y0, x1, y1))
     # Preserve native detail; magnify small crops without inventing detail.
     scale = min(3.0, max(1.0, 900 / max(im.size)))
     im = im.resize((round(im.width * scale), round(im.height * scale)))
