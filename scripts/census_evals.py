@@ -141,7 +141,26 @@ class Method:
         return ', '.join(parts)
 
 
+INFRA_ERRORS = ('stream disconnected', 'error sending request', 'Reconnecting', 'connection reset')
+
+
+def infra_failure(output: CountOutput) -> bool:
+    """Lost network or provider stream: not the model's fault, so retry rather than score it."""
+    return not output.completed and any(e in (output.error or '') for e in INFRA_ERRORS)
+
+
 async def count_image(
+    image: Path, model: str, effort: str, method: Method | None = None, species: str = 'elk', retries: int = 2
+) -> CountOutput:
+    for attempt in range(retries + 1):
+        output = await _count_once(image, model, effort, method, species)
+        if not infra_failure(output) or attempt == retries:
+            return output
+        logfire.warn('retrying {image} after infrastructure failure: {error}', image=image.name, error=output.error)
+    raise AssertionError('unreachable')
+
+
+async def _count_once(
     image: Path, model: str, effort: str, method: Method | None = None, species: str = 'elk'
 ) -> CountOutput:
     method = method or Method()

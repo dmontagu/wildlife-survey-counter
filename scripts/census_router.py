@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from scripts.census_evals import BASE_DIR, DATASET_DIR, WORK_ROOT, localization
+from scripts.census_evals import BASE_DIR, DATASET_DIR, INFRA_ERRORS, WORK_ROOT, localization
 
 from wildlife_counter.counting_agent import propose
 
@@ -83,6 +83,8 @@ def matrix() -> dict[str, dict[str, list[dict]]]:
         run = json.loads((run_dir / 'run.json').read_text())
         ledger = json.loads((run_dir / 'ledger.json').read_text()) if (run_dir / 'ledger.json').exists() else {}
         done = bool(ledger.get('submitted'))
+        if not done and any(e in str(run.get('error') or '') for e in INFRA_ERRORS):
+            continue  # lost network/provider stream: not a model result, so neither scored nor penalized
         points = [p for rid in ledger.get('regions', {}) for p in ledger['records'].get(rid, {}).get('points', [])]
         ref = refs[m['image']]
         scores = localization(points if done else [], ref['points'], ref['possible'], ref['match_radius_px'])
