@@ -18,7 +18,7 @@ from opentelemetry import trace
 
 from wildlife_counter.config import settings
 from wildlife_counter.counting_agent import Census, census_preview, prompt_for
-from wildlife_counter.counting_codex import cli_instructions, restore_ledger, write_source
+from wildlife_counter.counting_codex import cli_instructions, event_lines, restore_ledger, write_source
 
 _tracer = trace.get_tracer('wildlife_counter.counting_claude')
 
@@ -142,7 +142,7 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
             proc.stdin.close()
             tool_spans: dict[str, trace.Span] = {}
             with (census.work_dir / 'claude-events.jsonl').open('wb') as events:
-                async for line in proc.stdout:
+                async for line in event_lines(proc.stdout):
                     events.write(line)
                     events.flush()
                     try:

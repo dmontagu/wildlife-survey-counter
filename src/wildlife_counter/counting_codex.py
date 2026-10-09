@@ -8,7 +8,7 @@ import os
 import shutil
 import signal
 import sys
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterable, Awaitable, Callable
 from pathlib import Path
 from time import time_ns
 
@@ -22,6 +22,23 @@ from wildlife_counter.pricing import api_equivalent_cost
 # Raw OTel spans take explicit start/end times without becoming the current context, so parallel
 # tool calls can overlap under the run span.
 _tracer = trace.get_tracer('wildlife_counter.counting_codex')
+
+
+# A CLI run that emits nothing this long (e.g. after the machine slept) is treated as a lost stream.
+STALL_SECONDS = 900
+
+
+async def event_lines(stream: AsyncIterable[bytes]):
+    """Yield lines from a CLI's event stream, failing as a disconnected stream if it stalls."""
+    lines = aiter(stream)
+    while True:
+        try:
+            line = await asyncio.wait_for(anext(lines), timeout=STALL_SECONDS)
+        except StopAsyncIteration:
+            return
+        except TimeoutError:
+            raise RuntimeError(f'stream disconnected: no events for {STALL_SECONDS // 60} minutes') from None
+        yield line
 
 
 def write_source(census: Census):
@@ -187,7 +204,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
             proc.stdin.close()
             tool_spans: dict[str, trace.Span] = {}
             with (census.work_dir / 'codex-events.jsonl').open('wb') as events:
-                async for line in proc.stdout:
+                async for line in event_lines(proc.stdout):
                     events.write(line)
                     events.flush()
                     try:
