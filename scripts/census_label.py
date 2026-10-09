@@ -96,10 +96,19 @@ def rerender(images: list[Path], species: str) -> None:
 
     work_root = BASE_DIR / 'storage' / 'sandbox' / 'evals'
     for image in images:
-        runs = sorted(work_root.glob(f'{image.stem}-*'), key=lambda d: d.stat().st_mtime)
+
+        def rank(d: Path) -> tuple[bool, float]:
+            # Completed runs beat incomplete ones; among equals the newest run.json wins (drawn last).
+            ledger = d / 'ledger.json'
+            done = ledger.exists() and json.loads(ledger.read_text()).get('submitted', False)
+            return bool(done), (d / 'run.json').stat().st_mtime if (d / 'run.json').exists() else 0.0
+
+        runs = sorted(work_root.glob(f'{image.stem}-*'), key=rank)
         for run_dir in runs:
             m = RUN_DIR.match(run_dir.name)
             if not m or m['image'] != image.stem or not (run_dir / 'run.json').exists():
+                continue
+            if not (run_dir / 'ledger.json').exists():  # stalled before recording anything
                 continue
             run = json.loads((run_dir / 'run.json').read_text())
             ledger = json.loads((run_dir / 'ledger.json').read_text())
