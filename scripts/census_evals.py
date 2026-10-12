@@ -15,7 +15,7 @@ CLI, everything else through the Codex CLI on ChatGPT. Costs are API-list equiva
 reported token usage, not charges. --region-size and --no-final-review vary the method.
 
 Scores: count error (signed, absolute, %) on the final number, and localization via one-to-one
-Hungarian matching of predicted to reference points within `match_radius_px` (half an animal):
+Hungarian matching of predicted to reference points within `match_radius_px` (half an animal, min 12px):
 precision, recall and F1. Placing the right number of points in the wrong places scores ~0 F1.
 Predictions within the radius of a reference *possible* animal are neutral, neither hit nor miss.
 A run that never completes its review delivers nothing in the app, so it scores as zero points.
@@ -365,7 +365,8 @@ def write_reference(
         'source': source,
         'reference': reference,
         'animal_size_px': size,
-        'match_radius_px': round(max(8.0, size / 2), 1),
+        # Half an animal, but never under 12px: on tiny animals, point placement jitter alone exceeds that.
+        'match_radius_px': round(max(12.0, size / 2), 1),
         'human_label_count': human_counts().get(image.stem),
         'points': [dict(x=round(p['x'], 1), y=round(p['y'], 1)) for p in points],
         'possible': [dict(x=round(p['x'], 1), y=round(p['y'], 1), reason=p.get('reason', '')) for p in possible],

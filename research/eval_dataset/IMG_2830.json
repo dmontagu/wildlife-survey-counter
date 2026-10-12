@@ -17,7 +17,7 @@
   "created_at": "2026-10-08T21:22:39.750678+00:00"
  },
  "animal_size_px": 4.9,
- "match_radius_px": 8.0,
+ "match_radius_px": 12.0,
  "human_label_count": 373,
  "points": [
   {

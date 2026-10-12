@@ -1,0 +1,2353 @@
+{
+ "20220226_121220": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 3.934929800000001,
+    "count": 60,
+    "count_error_pct": 1.694915254237288,
+    "f1": 0.957983193277311,
+    "reference": 59,
+    "run": "bbc57015"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.3693867,
+    "count": 60,
+    "count_error_pct": 1.694915254237288,
+    "f1": 0.9747899159663865,
+    "reference": 59,
+    "run": "61f28397"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.7442694999999999,
+    "count": 60,
+    "count_error_pct": 1.694915254237288,
+    "f1": 0.957983193277311,
+    "reference": 59,
+    "run": "9b805a8e"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 1.771624,
+    "count": 61,
+    "count_error_pct": 3.389830508474576,
+    "f1": 0.9833333333333333,
+    "reference": 59,
+    "run": "b3299735"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 1.624526,
+    "count": 62,
+    "count_error_pct": 5.084745762711864,
+    "f1": 0.9421487603305785,
+    "reference": 59,
+    "run": "c8cef450"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 1.378608,
+    "count": 62,
+    "count_error_pct": 5.084745762711864,
+    "f1": 0.9586776859504132,
+    "reference": 59,
+    "run": "1af4e224"
+   }
+  ]
+ },
+ "DSC00465": {
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 10.0850029,
+    "count": 745,
+    "count_error_pct": 0.948509485094851,
+    "f1": 0.9885057471264367,
+    "reference": 738,
+    "run": "64fd8031"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 11.168626199999999,
+    "count": 747,
+    "count_error_pct": 1.2195121951219512,
+    "f1": 0.9952734638757595,
+    "reference": 738,
+    "run": "65fa4d1e"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 15.535776,
+    "count": 736,
+    "count_error_pct": 0.27100271002710025,
+    "f1": 0.9952477936184657,
+    "reference": 738,
+    "run": "79edb0db"
+   }
+  ]
+ },
+ "DSC00569": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 6.356554400000001,
+    "count": 78,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 78,
+    "run": "aad32a94"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 2.1938383000000004,
+    "count": 78,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 78,
+    "run": "8a82114a"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 2.3405763000000004,
+    "count": 79,
+    "count_error_pct": 1.2820512820512822,
+    "f1": 0.9936305732484078,
+    "reference": 78,
+    "run": "e68e79cd"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.782266,
+    "count": 78,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 78,
+    "run": "a0d0c3d8"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 4.466262,
+    "count": 78,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 78,
+    "run": "f9bb515f"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.563852,
+    "count": 78,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 78,
+    "run": "bea19adb"
+   }
+  ]
+ },
+ "DSC00608": {
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 12.360659900000005,
+    "count": 1089,
+    "count_error_pct": 3.3206831119544593,
+    "f1": 0.9719887955182073,
+    "reference": 1054,
+    "run": "14588dd6"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 14.870719800000003,
+    "count": 1120,
+    "count_error_pct": 6.261859582542694,
+    "f1": 0.9586016559337627,
+    "reference": 1054,
+    "run": "3e88a9dc"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 21.588502,
+    "count": 1006,
+    "count_error_pct": 4.554079696394687,
+    "f1": 0.9713453132588636,
+    "reference": 1054,
+    "run": "c60745be"
+   }
+  ]
+ },
+ "DSC00756": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 6.3161162000000015,
+    "count": 85,
+    "count_error_pct": 1.1627906976744187,
+    "f1": 0.9941520467836257,
+    "reference": 86,
+    "run": "c5a9df10"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 2.5541578000000005,
+    "count": 87,
+    "count_error_pct": 1.1627906976744187,
+    "f1": 0.9942196531791908,
+    "reference": 86,
+    "run": "9faba225"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.6117051,
+    "count": 86,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 86,
+    "run": "a448dfe7"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 2.2812524,
+    "count": 86,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 86,
+    "run": "f5018009"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.173168,
+    "count": 65,
+    "count_error_pct": 24.41860465116279,
+    "f1": 0.4768211920529801,
+    "reference": 86,
+    "run": "5187f2c6"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 1.391984,
+    "count": 64,
+    "count_error_pct": 25.58139534883721,
+    "f1": 0.48,
+    "reference": 86,
+    "run": "15e88de1"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 5.272894,
+    "count": 86,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 86,
+    "run": "a8ec4d7f"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 4.358644,
+    "count": 88,
+    "count_error_pct": 2.3255813953488373,
+    "f1": 0.9942196531791908,
+    "reference": 86,
+    "run": "ec7f4715"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 6.051606,
+    "count": 86,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 86,
+    "run": "c8b8eb6f"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.759444,
+    "count": 87,
+    "count_error_pct": 1.1627906976744187,
+    "f1": 0.9942196531791908,
+    "reference": 86,
+    "run": "f4f8c01f"
+   }
+  ]
+ },
+ "DSC01010": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 5.9124224000000005,
+    "count": 63,
+    "count_error_pct": 3.278688524590164,
+    "f1": 0.991869918699187,
+    "reference": 61,
+    "run": "04c5cf0f"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.2705843,
+    "count": 63,
+    "count_error_pct": 3.278688524590164,
+    "f1": 0.991869918699187,
+    "reference": 61,
+    "run": "13877c2e"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.8241234,
+    "count": 63,
+    "count_error_pct": 3.278688524590164,
+    "f1": 0.991869918699187,
+    "reference": 61,
+    "run": "191337a8"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.879994,
+    "count": 62,
+    "count_error_pct": 1.639344262295082,
+    "f1": 0.991869918699187,
+    "reference": 61,
+    "run": "a1feb3a5"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 4.023652,
+    "count": 60,
+    "count_error_pct": 1.639344262295082,
+    "f1": 0.9917355371900827,
+    "reference": 61,
+    "run": "35de3e03"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.531654,
+    "count": 61,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 61,
+    "run": "8f560d2e"
+   }
+  ]
+ },
+ "DSC01108": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 2.0874718,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "bb7762b1"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.9022683000000001,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "59eb31a5"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.0835274,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "a879988f"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 2.01663,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "c0794454"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 2.88618,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "5327b827"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.067128,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "e0f513d0"
+   }
+  ]
+ },
+ "DSC01116": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 3.643801200000001,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "78b8b770"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 1.7805424,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 0.9230769230769231,
+    "reference": 26,
+    "run": "700d7572"
+   },
+   {
+    "completed": true,
+    "cost": 1.0354618,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "c26824c0"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.8188421,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "3f3bd436"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.7415199999999997,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "f2381690"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.091637,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 0.4230769230769231,
+    "reference": 26,
+    "run": "0cf5757e"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 2.414577,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 0.8846153846153846,
+    "reference": 26,
+    "run": "34d67981"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.876508,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 0.6923076923076923,
+    "reference": 26,
+    "run": "dd78e662"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 3.15119,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "b177387b"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 2.58654,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "d983c5e3"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 3.786716,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "a9bde27e"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.125698,
+    "count": 26,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 26,
+    "run": "85f5fca7"
+   }
+  ]
+ },
+ "DSC01248": {
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 10.179585900000001,
+    "count": 977,
+    "count_error_pct": 0.8255933952528379,
+    "f1": 0.9917695473251029,
+    "reference": 969,
+    "run": "445f451a"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 10.828302999999998,
+    "count": 973,
+    "count_error_pct": 0.41279669762641896,
+    "f1": 0.988659793814433,
+    "reference": 969,
+    "run": "48f50e20"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 18.480116,
+    "count": 971,
+    "count_error_pct": 0.20639834881320948,
+    "f1": 0.995358432181537,
+    "reference": 969,
+    "run": "fa1f6c52"
+   }
+  ]
+ },
+ "DSC01274": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 22.311038999999997,
+    "count": 556,
+    "count_error_pct": 70.5521472392638,
+    "f1": 0.7369614512471656,
+    "reference": 326,
+    "run": "b34472d6"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 8.1220653,
+    "count": 526,
+    "count_error_pct": 61.34969325153374,
+    "f1": 0.7464788732394366,
+    "reference": 326,
+    "run": "d33b2a57"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 6.597739900000003,
+    "count": 430,
+    "count_error_pct": 31.901840490797547,
+    "f1": 0.8597883597883598,
+    "reference": 326,
+    "run": "630a9296"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 9.040256,
+    "count": 328,
+    "count_error_pct": 0.6134969325153374,
+    "f1": 0.9969418960244648,
+    "reference": 326,
+    "run": "3c9b9551"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 8.332152,
+    "count": 330,
+    "count_error_pct": 1.2269938650306749,
+    "f1": 0.9908536585365855,
+    "reference": 326,
+    "run": "e81957f8"
+   }
+  ]
+ },
+ "DSC01410": {
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 9.939218900000002,
+    "count": 679,
+    "count_error_pct": 1.4947683109118086,
+    "f1": 0.8916913946587537,
+    "reference": 669,
+    "run": "3c70f414"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 8.112347699999999,
+    "count": 656,
+    "count_error_pct": 1.9431988041853512,
+    "f1": 0.9252830188679245,
+    "reference": 669,
+    "run": "751a444e"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 11.774668,
+    "count": 672,
+    "count_error_pct": 0.4484304932735426,
+    "f1": 0.9515287099179716,
+    "reference": 669,
+    "run": "dcfb7b41"
+   }
+  ]
+ },
+ "DSC01422": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 14.4990824,
+    "count": 122,
+    "count_error_pct": 1.6129032258064515,
+    "f1": 0.9674796747967479,
+    "reference": 124,
+    "run": "7ffbbe9b"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 4.1729515,
+    "count": 124,
+    "count_error_pct": 0.0,
+    "f1": 0.967741935483871,
+    "reference": 124,
+    "run": "d8abb7aa"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 3.2678659000000003,
+    "count": 122,
+    "count_error_pct": 1.6129032258064515,
+    "f1": 0.9674796747967479,
+    "reference": 124,
+    "run": "afdb3129"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.819076,
+    "count": 121,
+    "count_error_pct": 2.4193548387096775,
+    "f1": 0.979591836734694,
+    "reference": 124,
+    "run": "2df7007b"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 5.826656,
+    "count": 124,
+    "count_error_pct": 0.0,
+    "f1": 0.9919354838709677,
+    "reference": 124,
+    "run": "581bb436"
+   }
+  ]
+ },
+ "DSC01790": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 7.302636000000001,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "f163accd"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 2.2622286,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "64b0900f"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.4196116,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "41de32ac"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 2.8694959,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "9eca167a"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.178806,
+    "count": 55,
+    "count_error_pct": 3.508771929824561,
+    "f1": 0.3928571428571429,
+    "reference": 57,
+    "run": "6d9748d3"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 2.707428,
+    "count": 55,
+    "count_error_pct": 3.508771929824561,
+    "f1": 0.9285714285714285,
+    "reference": 57,
+    "run": "680e58c9"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.949876,
+    "count": 48,
+    "count_error_pct": 15.789473684210526,
+    "f1": 0.7238095238095237,
+    "reference": 57,
+    "run": "717e1fbb"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 5.22791,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "137bcd27"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.743356,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "e7d25937"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 5.68915,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "573caa51"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.743002,
+    "count": 57,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 57,
+    "run": "f0e4902b"
+   }
+  ]
+ },
+ "DSC01813": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 4.2951088,
+    "count": 41,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 41,
+    "run": "4316c48c"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.0659256000000001,
+    "count": 41,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 41,
+    "run": "bae35573"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.5106061,
+    "count": 41,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 41,
+    "run": "c6fc896b"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 2.33721,
+    "count": 41,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 41,
+    "run": "fef5b039"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 3.027052,
+    "count": 41,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 41,
+    "run": "28633dd8"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.011838,
+    "count": 41,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 41,
+    "run": "10d5c161"
+   }
+  ]
+ },
+ "DSC02031": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 5.768892200000001,
+    "count": 81,
+    "count_error_pct": 1.25,
+    "f1": 0.9937888198757764,
+    "reference": 80,
+    "run": "ca1c83ec"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 2.6566472000000005,
+    "count": 81,
+    "count_error_pct": 1.25,
+    "f1": 0.9813664596273292,
+    "reference": 80,
+    "run": "ecee8d25"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.7528888,
+    "count": 83,
+    "count_error_pct": 3.75,
+    "f1": 0.9693251533742331,
+    "reference": 80,
+    "run": "797a1899"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 2.4446361,
+    "count": 82,
+    "count_error_pct": 2.5,
+    "f1": 0.9876543209876543,
+    "reference": 80,
+    "run": "73ee7b7e"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.148028,
+    "count": 64,
+    "count_error_pct": 20.0,
+    "f1": 0.5972222222222222,
+    "reference": 80,
+    "run": "421d11e5"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 1.014793,
+    "count": 74,
+    "count_error_pct": 7.5,
+    "f1": 0.6753246753246753,
+    "reference": 80,
+    "run": "10257170"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 5.909282,
+    "count": 81,
+    "count_error_pct": 1.25,
+    "f1": 0.9813664596273292,
+    "reference": 80,
+    "run": "3bbd40c5"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.85839,
+    "count": 80,
+    "count_error_pct": 0.0,
+    "f1": 0.975,
+    "reference": 80,
+    "run": "4a2e5675"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": null,
+    "count": 81,
+    "count_error_pct": 1.25,
+    "f1": 0.9813664596273292,
+    "reference": 80,
+    "run": "a07dfe7b"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.039834,
+    "count": 81,
+    "count_error_pct": 1.25,
+    "f1": 0.9689440993788819,
+    "reference": 80,
+    "run": "0bdeeacf"
+   }
+  ]
+ },
+ "IMG_2830": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 7.245847799999999,
+    "count": 330,
+    "count_error_pct": 12.244897959183673,
+    "f1": 0.9387096774193547,
+    "reference": 294,
+    "run": "e8eae01e"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 2.7597697,
+    "count": 351,
+    "count_error_pct": 19.387755102040817,
+    "f1": 0.9048361934477379,
+    "reference": 294,
+    "run": "e99b06de"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 2.215074,
+    "count": 372,
+    "count_error_pct": 26.53061224489796,
+    "f1": 0.8861911987860395,
+    "reference": 294,
+    "run": "7f7ea722"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 5.292298,
+    "count": 307,
+    "count_error_pct": 4.421768707482993,
+    "f1": 0.963210702341137,
+    "reference": 294,
+    "run": "6fdde5cb"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": null,
+    "count": 315,
+    "count_error_pct": 7.142857142857143,
+    "f1": 0.9522240527182867,
+    "reference": 294,
+    "run": "a686b187"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.938608,
+    "count": 309,
+    "count_error_pct": 5.1020408163265305,
+    "f1": 0.961730449251248,
+    "reference": 294,
+    "run": "41a51375"
+   }
+  ]
+ },
+ "IMG_2841": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 1.3444518,
+    "count": 63,
+    "count_error_pct": 1.6129032258064515,
+    "f1": 0.9919999999999999,
+    "reference": 62,
+    "run": "2c1c859f"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.4830207000000001,
+    "count": 63,
+    "count_error_pct": 1.6129032258064515,
+    "f1": 0.9919999999999999,
+    "reference": 62,
+    "run": "6c792cce"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.3910206000000001,
+    "count": 62,
+    "count_error_pct": 0.0,
+    "f1": 0.9838709677419355,
+    "reference": 62,
+    "run": "deb29378"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 1.681628,
+    "count": 63,
+    "count_error_pct": 1.6129032258064515,
+    "f1": 0.976,
+    "reference": 62,
+    "run": "347ff391"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 1.281368,
+    "count": 62,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 62,
+    "run": "95a1e250"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 1.262064,
+    "count": 64,
+    "count_error_pct": 3.225806451612903,
+    "f1": 0.9841269841269841,
+    "reference": 62,
+    "run": "a72eeba9"
+   }
+  ]
+ },
+ "IMG_3154": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 0.9037262,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "2d7da590"
+   },
+   {
+    "completed": true,
+    "cost": 0.8247465999999999,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "ad93e221"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 0.40134420000000004,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "9dc40b5e"
+   },
+   {
+    "completed": true,
+    "cost": 0.34719,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "c8c71a0d"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.2540098,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "b35756c0"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.25150910000000004,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "b35a3ff6"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.079185,
+    "count": 44,
+    "count_error_pct": 2.3255813953488373,
+    "f1": 0.20689655172413796,
+    "reference": 43,
+    "run": "4ac134e4"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 1.35459,
+    "count": 41,
+    "count_error_pct": 4.651162790697675,
+    "f1": 0.6428571428571429,
+    "reference": 43,
+    "run": "52ddd577"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.482976,
+    "count": 37,
+    "count_error_pct": 13.953488372093023,
+    "f1": 0.125,
+    "reference": 43,
+    "run": "86951767"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 1.620942,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "1cd1cebf"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 1.203448,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "88943773"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 1.936564,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "2cad6057"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 0.927372,
+    "count": 43,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 43,
+    "run": "abffcb74"
+   }
+  ]
+ },
+ "IMG_3157": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 3.8824277999999994,
+    "count": 194,
+    "count_error_pct": 3.1914893617021276,
+    "f1": 0.9476439790575917,
+    "reference": 188,
+    "run": "d55ffc2c"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.2410636000000002,
+    "count": 197,
+    "count_error_pct": 4.787234042553192,
+    "f1": 0.9662337662337663,
+    "reference": 188,
+    "run": "1189bccc"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.8451472,
+    "count": 196,
+    "count_error_pct": 4.25531914893617,
+    "f1": 0.9531250000000001,
+    "reference": 188,
+    "run": "bdac1347"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.441958,
+    "count": 190,
+    "count_error_pct": 1.0638297872340425,
+    "f1": 0.9788359788359788,
+    "reference": 188,
+    "run": "96437550"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": null,
+    "count": 191,
+    "count_error_pct": 1.5957446808510638,
+    "f1": 0.9604221635883905,
+    "reference": 188,
+    "run": "710f2ad2"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.266972,
+    "count": 191,
+    "count_error_pct": 1.5957446808510638,
+    "f1": 0.970976253298153,
+    "reference": 188,
+    "run": "6861c4bf"
+   }
+  ]
+ },
+ "IMG_3192": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 4.4422926,
+    "count": 177,
+    "count_error_pct": 0.0,
+    "f1": 0.9915014164305949,
+    "reference": 177,
+    "run": "167149ff"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 2.1904976,
+    "count": 183,
+    "count_error_pct": 3.389830508474576,
+    "f1": 0.9805013927576602,
+    "reference": 177,
+    "run": "5e653f83"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.2995869,
+    "count": 181,
+    "count_error_pct": 2.2598870056497176,
+    "f1": 0.9859943977591036,
+    "reference": 177,
+    "run": "f53c7bf0"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.3217396000000001,
+    "count": 183,
+    "count_error_pct": 3.389830508474576,
+    "f1": 0.9805013927576602,
+    "reference": 177,
+    "run": "4377f9fe"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.177111,
+    "count": 135,
+    "count_error_pct": 23.728813559322035,
+    "f1": 0.3012820512820512,
+    "reference": 177,
+    "run": "53ea8aac"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 3.430421,
+    "count": 142,
+    "count_error_pct": 19.774011299435028,
+    "f1": 0.6981132075471698,
+    "reference": 177,
+    "run": "7788c452"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.827286,
+    "count": 123,
+    "count_error_pct": 30.508474576271187,
+    "f1": 0.3533333333333334,
+    "reference": 177,
+    "run": "ca18d8ce"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 5.717148,
+    "count": 175,
+    "count_error_pct": 1.1299435028248588,
+    "f1": 0.9914529914529915,
+    "reference": 177,
+    "run": "b9a712c1"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.99951,
+    "count": 173,
+    "count_error_pct": 2.2598870056497176,
+    "f1": 0.9856733524355301,
+    "reference": 177,
+    "run": "7376866a"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 4.234254,
+    "count": 176,
+    "count_error_pct": 0.5649717514124294,
+    "f1": 0.9943181818181819,
+    "reference": 177,
+    "run": "8530c56b"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 3.988038,
+    "count": 176,
+    "count_error_pct": 0.5649717514124294,
+    "f1": 0.9943181818181819,
+    "reference": 177,
+    "run": "2825eff6"
+   }
+  ]
+ },
+ "IMG_3607": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 3.1402487999999993,
+    "count": 158,
+    "count_error_pct": 0.6369426751592356,
+    "f1": 0.9333333333333332,
+    "reference": 157,
+    "run": "3d89ec6a"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.2977219999999998,
+    "count": 160,
+    "count_error_pct": 1.910828025477707,
+    "f1": 0.914826498422713,
+    "reference": 157,
+    "run": "05b38320"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.3046605999999998,
+    "count": 159,
+    "count_error_pct": 1.2738853503184713,
+    "f1": 0.8987341772151899,
+    "reference": 157,
+    "run": "9333ac8d"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.820964,
+    "count": 155,
+    "count_error_pct": 1.2738853503184713,
+    "f1": 0.9423076923076924,
+    "reference": 157,
+    "run": "d3563f71"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.321806,
+    "count": 157,
+    "count_error_pct": 0.0,
+    "f1": 0.9490445859872612,
+    "reference": 157,
+    "run": "6b23b35f"
+   }
+  ]
+ },
+ "IMG_3694": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 1.8982968,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9935483870967742,
+    "reference": 77,
+    "run": "2c101c60"
+   }
+  ],
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 1.0315154000000002,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9806451612903225,
+    "reference": 77,
+    "run": "fd982daa"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.9718653,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9935483870967742,
+    "reference": 77,
+    "run": "da7d4656"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.7217338000000001,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9806451612903225,
+    "reference": 77,
+    "run": "354e33f0"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.135188,
+    "count": 57,
+    "count_error_pct": 25.974025974025974,
+    "f1": 0.5671641791044776,
+    "reference": 77,
+    "run": "c82fe20d"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 2.423974,
+    "count": 71,
+    "count_error_pct": 7.792207792207792,
+    "f1": 0.8918918918918918,
+    "reference": 77,
+    "run": "1c1b4dba"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.740116,
+    "count": 71,
+    "count_error_pct": 7.792207792207792,
+    "f1": 0.6621621621621622,
+    "reference": 77,
+    "run": "098eaf78"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 2.152918,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9806451612903225,
+    "reference": 77,
+    "run": "c18c17f4"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 1.50275,
+    "count": 77,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 77,
+    "run": "b573ab0c"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 2.146482,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9935483870967742,
+    "reference": 77,
+    "run": "b6a4bd83"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 1.640352,
+    "count": 78,
+    "count_error_pct": 1.2987012987012987,
+    "f1": 0.9935483870967742,
+    "reference": 77,
+    "run": "fb381101"
+   }
+  ]
+ },
+ "IMG_3706": {
+  "claude-opus-5-5 high": [
+   {
+    "completed": true,
+    "cost": 2.3322433999999994,
+    "count": 116,
+    "count_error_pct": 0.8547008547008547,
+    "f1": 0.9871244635193134,
+    "reference": 117,
+    "run": "2a42a866"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.235076,
+    "count": 117,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 117,
+    "run": "9d6bd5a1"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.0605898000000002,
+    "count": 117,
+    "count_error_pct": 0.0,
+    "f1": 0.9914529914529915,
+    "reference": 117,
+    "run": "c0b349ef"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.166065,
+    "count": 89,
+    "count_error_pct": 23.931623931623932,
+    "f1": 0.31067961165048547,
+    "reference": 117,
+    "run": "731272df"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 3.127011,
+    "count": 106,
+    "count_error_pct": 9.401709401709402,
+    "f1": 0.7713004484304934,
+    "reference": 117,
+    "run": "832eb6d7"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.783348,
+    "count": 91,
+    "count_error_pct": 22.22222222222222,
+    "f1": 0.4807692307692307,
+    "reference": 117,
+    "run": "dc83fdf3"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 2.934202,
+    "count": 116,
+    "count_error_pct": 0.8547008547008547,
+    "f1": 0.9957081545064378,
+    "reference": 117,
+    "run": "b6f092e0"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 2.91918,
+    "count": 116,
+    "count_error_pct": 0.8547008547008547,
+    "f1": 0.9957081545064378,
+    "reference": 117,
+    "run": "f18c8636"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 2.914792,
+    "count": 116,
+    "count_error_pct": 0.8547008547008547,
+    "f1": 0.9957081545064378,
+    "reference": 117,
+    "run": "24fc7909"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.24176,
+    "count": 116,
+    "count_error_pct": 0.8547008547008547,
+    "f1": 0.9957081545064378,
+    "reference": 117,
+    "run": "54ee4cbc"
+   }
+  ]
+ },
+ "IMG_3708": {
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 1.9437834,
+    "count": 105,
+    "count_error_pct": 0.9615384615384616,
+    "f1": 0.9760765550239234,
+    "reference": 104,
+    "run": "aa16b1f0"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 1.9004550999999998,
+    "count": 107,
+    "count_error_pct": 2.8846153846153846,
+    "f1": 0.966824644549763,
+    "reference": 104,
+    "run": "9fd90982"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 3.038112,
+    "count": 101,
+    "count_error_pct": 2.8846153846153846,
+    "f1": 0.9853658536585366,
+    "reference": 104,
+    "run": "b375a42a"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 2.167608,
+    "count": 104,
+    "count_error_pct": 0.0,
+    "f1": 0.9807692307692307,
+    "reference": 104,
+    "run": "5e0b5855"
+   }
+  ]
+ },
+ "IMG_3733": {
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 0.9909137999999998,
+    "count": 97,
+    "count_error_pct": 1.0204081632653061,
+    "f1": 0.9948717948717948,
+    "reference": 98,
+    "run": "b0febf27"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.7308672999999999,
+    "count": 97,
+    "count_error_pct": 1.0204081632653061,
+    "f1": 0.9948717948717948,
+    "reference": 98,
+    "run": "7a036895"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.6349828,
+    "count": 97,
+    "count_error_pct": 1.0204081632653061,
+    "f1": 0.9948717948717948,
+    "reference": 98,
+    "run": "868fb999"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.100034,
+    "count": 86,
+    "count_error_pct": 12.244897959183673,
+    "f1": 0.6847826086956522,
+    "reference": 98,
+    "run": "9857eb16"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 1.669897,
+    "count": 91,
+    "count_error_pct": 7.142857142857143,
+    "f1": 0.91005291005291,
+    "reference": 98,
+    "run": "0084dba9"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.654491,
+    "count": 93,
+    "count_error_pct": 5.1020408163265305,
+    "f1": 0.8795811518324608,
+    "reference": 98,
+    "run": "5b3bbce3"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 2.097016,
+    "count": 98,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 98,
+    "run": "27ea10e6"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 1.439946,
+    "count": 98,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 98,
+    "run": "bccf74cc"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 1.461456,
+    "count": 98,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 98,
+    "run": "a0dbbfd2"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 1.12586,
+    "count": 98,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 98,
+    "run": "aa4805c9"
+   }
+  ]
+ },
+ "IMG_3835": {
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 4.583584599999999,
+    "count": 396,
+    "count_error_pct": 0.25316455696202533,
+    "f1": 0.9707750952986023,
+    "reference": 395,
+    "run": "c5dbd549"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 3.326847000000001,
+    "count": 414,
+    "count_error_pct": 4.810126582278481,
+    "f1": 0.9490683229813665,
+    "reference": 395,
+    "run": "a6029934"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 3.1269351,
+    "count": 415,
+    "count_error_pct": 5.063291139240507,
+    "f1": 0.956629491945477,
+    "reference": 395,
+    "run": "ff031cb6"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 4.18481,
+    "count": 310,
+    "count_error_pct": 21.518987341772153,
+    "f1": 0.39829302987197723,
+    "reference": 395,
+    "run": "3961b931"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.999849,
+    "count": 192,
+    "count_error_pct": 51.392405063291136,
+    "f1": 0.12286689419795221,
+    "reference": 395,
+    "run": "5cfdd23c"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 7.417386,
+    "count": 382,
+    "count_error_pct": 3.2911392405063293,
+    "f1": 0.9367741935483871,
+    "reference": 395,
+    "run": "5cac929b"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 6.757766,
+    "count": 389,
+    "count_error_pct": 1.518987341772152,
+    "f1": 0.9386189258312021,
+    "reference": 395,
+    "run": "1b33c869"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 6.71851,
+    "count": 386,
+    "count_error_pct": 2.278481012658228,
+    "f1": 0.9268292682926829,
+    "reference": 395,
+    "run": "373114e2"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 6.162,
+    "count": 376,
+    "count_error_pct": 4.810126582278481,
+    "f1": 0.9388816644993497,
+    "reference": 395,
+    "run": "0951ff0c"
+   }
+  ]
+ },
+ "IMG_3911": {
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 3.7003808,
+    "count": 344,
+    "count_error_pct": 0.5847953216374269,
+    "f1": 0.9985401459854015,
+    "reference": 342,
+    "run": "09d279f3"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 2.622134499999999,
+    "count": 344,
+    "count_error_pct": 0.5847953216374269,
+    "f1": 0.9985401459854015,
+    "reference": 342,
+    "run": "55b5d18a"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 2.1802395,
+    "count": 345,
+    "count_error_pct": 0.8771929824561403,
+    "f1": 0.9970845481049563,
+    "reference": 342,
+    "run": "dc7bbf63"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.104354,
+    "count": 250,
+    "count_error_pct": 26.900584795321638,
+    "f1": 0.11824324324324324,
+    "reference": 342,
+    "run": "612d6e33"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 4.858894,
+    "count": 297,
+    "count_error_pct": 13.157894736842104,
+    "f1": 0.5884194053208138,
+    "reference": 342,
+    "run": "fd5d2f02"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.923582,
+    "count": 237,
+    "count_error_pct": 30.70175438596491,
+    "f1": 0.18652849740932642,
+    "reference": 342,
+    "run": "4e82c9e9"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 7.77732,
+    "count": 344,
+    "count_error_pct": 0.5847953216374269,
+    "f1": 1.0,
+    "reference": 342,
+    "run": "1861a5fe"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 6.063962,
+    "count": 345,
+    "count_error_pct": 0.8771929824561403,
+    "f1": 0.9985401459854015,
+    "reference": 342,
+    "run": "d48ec6aa"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 6.756184,
+    "count": 342,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 342,
+    "run": "bdbf9827"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 4.644014,
+    "count": 342,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 342,
+    "run": "a7bc1b1b"
+   }
+  ]
+ },
+ "IMG_3938": {
+  "claude-sonnet-5-5 high": [
+   {
+    "completed": true,
+    "cost": 0.6287692,
+    "count": 54,
+    "count_error_pct": 1.8867924528301887,
+    "f1": 0.9906542056074767,
+    "reference": 53,
+    "run": "7ed5d986"
+   }
+  ],
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 0.46948000000000006,
+    "count": 54,
+    "count_error_pct": 1.8867924528301887,
+    "f1": 0.9906542056074767,
+    "reference": 53,
+    "run": "45ad9a19"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 0.3904066,
+    "count": 54,
+    "count_error_pct": 1.8867924528301887,
+    "f1": 0.9906542056074767,
+    "reference": 53,
+    "run": "d802545b"
+   }
+  ],
+  "gpt-5.6-luna high": [
+   {
+    "completed": true,
+    "cost": 0.193601,
+    "count": 44,
+    "count_error_pct": 16.9811320754717,
+    "f1": 0.4536082474226804,
+    "reference": 53,
+    "run": "adbdf2ec"
+   }
+  ],
+  "gpt-5.6-sol high": [
+   {
+    "completed": true,
+    "cost": 1.575373,
+    "count": 43,
+    "count_error_pct": 18.867924528301888,
+    "f1": 0.6666666666666666,
+    "reference": 53,
+    "run": "e43c4186"
+   }
+  ],
+  "gpt-5.6-terra high": [
+   {
+    "completed": true,
+    "cost": 0.629773,
+    "count": 43,
+    "count_error_pct": 18.867924528301888,
+    "f1": 0.37499999999999994,
+    "reference": 53,
+    "run": "10e06a46"
+   }
+  ],
+  "gpt-6-astra high": [
+   {
+    "completed": true,
+    "cost": 1.9718,
+    "count": 54,
+    "count_error_pct": 1.8867924528301887,
+    "f1": 0.9906542056074767,
+    "reference": 53,
+    "run": "e80c650f"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 1.837652,
+    "count": 54,
+    "count_error_pct": 1.8867924528301887,
+    "f1": 0.9906542056074767,
+    "reference": 53,
+    "run": "aef619a4"
+   }
+  ],
+  "gpt-6-astra medium": [
+   {
+    "completed": true,
+    "cost": 1.823288,
+    "count": 54,
+    "count_error_pct": 1.8867924528301887,
+    "f1": 0.9719626168224299,
+    "reference": 53,
+    "run": "d4a2ad39"
+   }
+  ],
+  "gpt-6-astra medium no-final": [
+   {
+    "completed": true,
+    "cost": 1.281006,
+    "count": 53,
+    "count_error_pct": 0.0,
+    "f1": 0.9811320754716981,
+    "reference": 53,
+    "run": "bb2e4d82"
+   }
+  ]
+ },
+ "wpt 103": {
+  "claude-sonnet-5-5 high no-final": [
+   {
+    "completed": true,
+    "cost": 3.344264000000001,
+    "count": 101,
+    "count_error_pct": 0.9803921568627451,
+    "f1": 0.9852216748768472,
+    "reference": 102,
+    "run": "0d746658"
+   }
+  ],
+  "claude-sonnet-5-5 medium": [
+   {
+    "completed": true,
+    "cost": 3.6429462,
+    "count": 103,
+    "count_error_pct": 0.9803921568627451,
+    "f1": 0.975609756097561,
+    "reference": 102,
+    "run": "205574c1"
+   }
+  ],
+  "gpt-6-astra high no-final": [
+   {
+    "completed": true,
+    "cost": 5.940666,
+    "count": 102,
+    "count_error_pct": 0.0,
+    "f1": 1.0,
+    "reference": 102,
+    "run": "1ade0ec5"
+   }
+  ]
+ }
+}

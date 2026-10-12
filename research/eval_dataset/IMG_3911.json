@@ -14,7 +14,7 @@
   "estimated_cost_usd": 8.663822
  },
  "animal_size_px": 13.7,
- "match_radius_px": 8.0,
+ "match_radius_px": 12.0,
  "human_label_count": 344,
  "points": [
   {

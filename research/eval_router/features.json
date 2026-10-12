@@ -1,4 +1,40 @@
 {
+ "20220226_121220": {
+  "animal_frac": 0.01,
+  "animal_px": 46.4,
+  "confident": 52,
+  "crowded": 0.712,
+  "low_conf_share": 0.878,
+  "megapixels": 16.0,
+  "proposals": 425
+ },
+ "DSC00465": {
+  "animal_frac": 0.0038,
+  "animal_px": 36.1,
+  "confident": 737,
+  "crowded": 0.548,
+  "low_conf_share": 0.235,
+  "megapixels": 60.2,
+  "proposals": 963
+ },
+ "DSC00569": {
+  "animal_frac": 0.0122,
+  "animal_px": 115.9,
+  "confident": 103,
+  "crowded": 0.961,
+  "low_conf_share": 0.431,
+  "megapixels": 60.2,
+  "proposals": 181
+ },
+ "DSC00608": {
+  "animal_frac": 0.0036,
+  "animal_px": 33.8,
+  "confident": 542,
+  "crowded": 0.849,
+  "low_conf_share": 0.398,
+  "megapixels": 60.2,
+  "proposals": 900
+ },
  "DSC00756": {
   "animal_frac": 0.0087,
   "animal_px": 83.0,
@@ -7,6 +43,24 @@
   "low_conf_share": 0.487,
   "megapixels": 60.2,
   "proposals": 152
+ },
+ "DSC01010": {
+  "animal_frac": 0.01,
+  "animal_px": 95.0,
+  "confident": 57,
+  "crowded": 0.632,
+  "low_conf_share": 0.4,
+  "megapixels": 60.2,
+  "proposals": 95
+ },
+ "DSC01108": {
+  "animal_frac": 0.0118,
+  "animal_px": 111.8,
+  "confident": 29,
+  "crowded": 0.552,
+  "low_conf_share": 0.383,
+  "megapixels": 60.2,
+  "proposals": 47
  },
  "DSC01116": {
   "animal_frac": 0.0061,
@@ -17,6 +71,42 @@
   "megapixels": 60.2,
   "proposals": 103
  },
+ "DSC01248": {
+  "animal_frac": 0.0061,
+  "animal_px": 57.7,
+  "confident": 990,
+  "crowded": 0.775,
+  "low_conf_share": 0.349,
+  "megapixels": 60.2,
+  "proposals": 1520
+ },
+ "DSC01274": {
+  "animal_frac": 0.0021,
+  "animal_px": 19.5,
+  "confident": 379,
+  "crowded": 0.533,
+  "low_conf_share": 0.278,
+  "megapixels": 60.2,
+  "proposals": 525
+ },
+ "DSC01410": {
+  "animal_frac": 0.0066,
+  "animal_px": 63.2,
+  "confident": 691,
+  "crowded": 0.988,
+  "low_conf_share": 0.534,
+  "megapixels": 60.2,
+  "proposals": 1482
+ },
+ "DSC01422": {
+  "animal_frac": 0.0119,
+  "animal_px": 113.3,
+  "confident": 144,
+  "crowded": 0.986,
+  "low_conf_share": 0.314,
+  "megapixels": 60.2,
+  "proposals": 210
+ },
  "DSC01790": {
   "animal_frac": 0.0135,
   "animal_px": 128.2,
@@ -25,6 +115,15 @@
   "low_conf_share": 0.516,
   "megapixels": 60.2,
   "proposals": 153
+ },
+ "DSC01813": {
+  "animal_frac": 0.0138,
+  "animal_px": 130.9,
+  "confident": 69,
+  "crowded": 0.957,
+  "low_conf_share": 0.675,
+  "megapixels": 60.2,
+  "proposals": 212
  },
  "DSC02031": {
   "animal_frac": 0.0133,
@@ -35,6 +134,24 @@
   "megapixels": 60.2,
   "proposals": 463
  },
+ "IMG_2830": {
+  "animal_frac": 0.0033,
+  "animal_px": 9.2,
+  "confident": 428,
+  "crowded": 0.738,
+  "low_conf_share": 0.336,
+  "megapixels": 5.3,
+  "proposals": 645
+ },
+ "IMG_2841": {
+  "animal_frac": 0.0177,
+  "animal_px": 50.0,
+  "confident": 73,
+  "crowded": 1.0,
+  "low_conf_share": 0.614,
+  "megapixels": 5.3,
+  "proposals": 189
+ },
  "IMG_3154": {
   "animal_frac": 0.009,
   "animal_px": 34.9,
@@ -44,6 +161,15 @@
   "megapixels": 10.1,
   "proposals": 124
  },
+ "IMG_3157": {
+  "animal_frac": 0.0067,
+  "animal_px": 26.1,
+  "confident": 211,
+  "crowded": 0.706,
+  "low_conf_share": 0.308,
+  "megapixels": 10.1,
+  "proposals": 305
+ },
  "IMG_3192": {
   "animal_frac": 0.0074,
   "animal_px": 28.9,
@@ -52,6 +178,15 @@
   "low_conf_share": 0.396,
   "megapixels": 10.1,
   "proposals": 333
+ },
+ "IMG_3607": {
+  "animal_frac": 0.0034,
+  "animal_px": 13.0,
+  "confident": 50,
+  "crowded": 0.48,
+  "low_conf_share": 0.925,
+  "megapixels": 10.1,
+  "proposals": 663
  },
  "IMG_3694": {
   "animal_frac": 0.0304,
@@ -70,6 +205,15 @@
   "low_conf_share": 0.447,
   "megapixels": 10.1,
   "proposals": 226
+ },
+ "IMG_3708": {
+  "animal_frac": 0.0288,
+  "animal_px": 111.8,
+  "confident": 115,
+  "crowded": 1.0,
+  "low_conf_share": 0.502,
+  "megapixels": 10.1,
+  "proposals": 231
  },
  "IMG_3733": {
   "animal_frac": 0.0264,
@@ -106,5 +250,14 @@
   "low_conf_share": 0.361,
   "megapixels": 10.1,
   "proposals": 97
+ },
+ "wpt 103": {
+  "animal_frac": 0.0153,
+  "animal_px": 145.6,
+  "confident": 140,
+  "crowded": 0.929,
+  "low_conf_share": 0.747,
+  "megapixels": 60.2,
+  "proposals": 553
  }
 }
