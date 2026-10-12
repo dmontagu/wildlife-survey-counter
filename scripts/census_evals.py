@@ -141,7 +141,19 @@ class Method:
         return ', '.join(parts)
 
 
-INFRA_ERRORS = ('stream disconnected', 'error sending request', 'Reconnecting', 'connection reset')
+INFRA_ERRORS = (
+    'stream disconnected',
+    'error sending request',
+    'Reconnecting',
+    'connection reset',
+    "Can't reach the API server",
+    'ECONNRESET',
+    'Connection dropped',
+    'Connection lost',
+    'request timed out',
+    # The CLI exited before the model touched the ledger: a stalled/killed process, not a counting result.
+    'did not record any image regions',
+)
 
 
 def infra_failure(output: CountOutput) -> bool:
