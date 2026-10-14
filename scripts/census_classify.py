@@ -118,9 +118,12 @@ async def classify(stem: str, spec: str, retries: int = 2) -> dict[str, Any]:
     batch_size = int(rest[0][1:]) if rest else 12
     result = await classify_once(stem, model, effort, batch_size)
     for _ in range(retries):
-        infra = not result['completed'] and any(e in str(result['error']) for e in INFRA_ERRORS)
-        if not infra:
+        error = str(result['error'])
+        throttled = '429' in error or 'Too Many Requests' in error
+        if result['completed'] or not (throttled or any(e in error for e in INFRA_ERRORS)):
             break
+        if throttled:
+            await asyncio.sleep(90)  # subscription rate limit: back off before retrying
         result = await classify_once(stem, model, effort, batch_size)
     render(result)
     print(
