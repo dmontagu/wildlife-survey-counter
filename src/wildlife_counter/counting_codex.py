@@ -142,16 +142,57 @@ async def run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitab
 
 
 async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]], model: str, effort: str):
+    write_source(census)
+
+    async def on_event(_: dict):
+        if (census.work_dir / 'ledger.json').exists():
+            try:
+                data = json.loads((census.work_dir / 'ledger.json').read_text())
+                run['regions_total'], run['regions_recorded'] = len(data['regions']), len(data['records'])
+                run['preview'] = census_preview(data)
+            except (ValueError, KeyError):
+                pass  # A tool may currently be writing the ledger.
+        await persist(run)
+
+    prompt = prompt_for(census.species) + '\n' + cli_instructions(census)
+    try:
+        code = await codex_exec(
+            run, census.work_dir, prompt, model, effort, 'wildlife_counter.counting_mcp', 'census', on_event
+        )
+        if code:
+            raise RuntimeError(run.get('error') or f'Codex exited with code {code}; see the local run log.')
+        if not (census.work_dir / 'ledger.json').exists():
+            raise RuntimeError(run.get('last_update') or 'Codex did not record any image regions.')
+        restore_ledger(census)
+    finally:
+        if (census.work_dir / 'ledger.json').exists():
+            restore_ledger(census)
+
+
+async def codex_exec(
+    run: dict,
+    work_dir: Path,
+    prompt: str,
+    model: str,
+    effort: str,
+    mcp_module: str,
+    server: str,
+    on_event: Callable[[dict], Awaitable[None]],
+) -> int:
+    """Run `codex exec` on the ChatGPT subscription with one local MCP server; returns the exit code.
+
+    Records usage, API-equivalent cost, tool-call spans and agent messages on `run`.
+    API keys are removed from the environment so this can never fall back to paid API calls.
+    """
     executable = shutil.which('codex')
     if not executable:
         raise RuntimeError('Install Codex CLI and sign in with ChatGPT to use subscription counting.')
-    write_source(census)
     environment = dict(os.environ)
     for key in ('OPENAI_API_KEY', 'CODEX_API_KEY', 'ANTHROPIC_API_KEY'):
         environment.pop(key, None)
     package_root = str(Path(__file__).resolve().parent.parent)
     environment['PYTHONPATH'] = package_root
-    mcp_args = json.dumps(['-m', 'wildlife_counter.counting_mcp', str(census.work_dir)])
+    mcp_args = json.dumps(['-m', mcp_module, str(work_dir)])
     args = [
         executable,
         'exec',
@@ -162,7 +203,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
         'read-only',
         '--json',
         '-C',
-        str(census.work_dir),
+        str(work_dir),
         '-m',
         model,
         '-c',
@@ -172,22 +213,21 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
         '-c',
         f'model_reasoning_effort="{effort}"',
         '-c',
-        f'mcp_servers.census.command={json.dumps(sys.executable)}',
+        f'mcp_servers.{server}.command={json.dumps(sys.executable)}',
         '-c',
-        f'mcp_servers.census.args={mcp_args}',
+        f'mcp_servers.{server}.args={mcp_args}',
         '-c',
-        'mcp_servers.census.required=true',
+        f'mcp_servers.{server}.required=true',
         '-c',
-        'mcp_servers.census.default_tools_approval_mode="approve"',
+        f'mcp_servers.{server}.default_tools_approval_mode="approve"',
         '-c',
-        'mcp_servers.census.tool_timeout_sec=300',
+        f'mcp_servers.{server}.tool_timeout_sec=300',
         '-c',
-        f'mcp_servers.census.env.PYTHONPATH={json.dumps(package_root)}',
+        f'mcp_servers.{server}.env.PYTHONPATH={json.dumps(package_root)}',
         '-',
     ]
-    prompt = prompt_for(census.species) + '\n' + cli_instructions(census)
     run['billing'] = 'ChatGPT/Codex subscription; API equivalent is informational, not an API charge.'
-    with (census.work_dir / 'codex-stderr.log').open('wb') as stderr:
+    with (work_dir / 'codex-stderr.log').open('wb') as stderr:
         proc = await asyncio.create_subprocess_exec(
             *args,
             env=environment,
@@ -203,7 +243,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
             await proc.stdin.drain()
             proc.stdin.close()
             tool_spans: dict[str, trace.Span] = {}
-            with (census.work_dir / 'codex-events.jsonl').open('wb') as events:
+            with (work_dir / 'codex-events.jsonl').open('wb') as events:
                 async for line in event_lines(proc.stdout):
                     events.write(line)
                     events.flush()
@@ -213,7 +253,7 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
                         continue
                     item = event.get('item', {})
                     if item.get('type') == 'mcp_tool_call':
-                        run['progress'] = f'Reviewing image: {item.get("tool", "census")}'
+                        run['progress'] = f'Reviewing image: {item.get("tool", server)}'
                         if event.get('type') == 'item.started':
                             tool_spans[item['id']] = _tracer.start_span(
                                 f'tool {item.get("tool")}',
@@ -252,20 +292,8 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
                             )
                     if event.get('type') in ('turn.failed', 'error'):
                         run['error'] = str(event.get('error', event.get('message', 'Codex run failed')))
-                    if (census.work_dir / 'ledger.json').exists():
-                        try:
-                            data = json.loads((census.work_dir / 'ledger.json').read_text())
-                            run['regions_total'], run['regions_recorded'] = len(data['regions']), len(data['records'])
-                            run['preview'] = census_preview(data)
-                        except (ValueError, KeyError):
-                            pass  # A tool may currently be writing the ledger.
-                    await persist(run)
-            code = await proc.wait()
-            if code:
-                raise RuntimeError(run.get('error') or f'Codex exited with code {code}; see the local run log.')
-            if not (census.work_dir / 'ledger.json').exists():
-                raise RuntimeError(run.get('last_update') or 'Codex did not record any image regions.')
-            restore_ledger(census)
+                    await on_event(event)
+            return await proc.wait()
         finally:
             if proc.returncode is None:
                 if os.name == 'posix':
@@ -280,5 +308,3 @@ async def _run_codex(run: dict, census: Census, persist: Callable[[dict], Awaita
                     else:
                         proc.kill()
                     await proc.wait()
-            if (census.work_dir / 'ledger.json').exists():
-                restore_ledger(census)
