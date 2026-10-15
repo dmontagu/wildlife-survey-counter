@@ -1,7 +1,8 @@
 """Classify counted elk (cow/calf/spike/brow-tined/...) with different models and settings, and compare.
 
 Uses the reference points in research/eval_dataset/ as the animals to classify, so classification
-is measured separately from counting. Runs on the ChatGPT subscription through the Codex CLI.
+is measured separately from counting. Runs on subscriptions: claude-* via the Claude Code CLI
+(one at a time), everything else via the Codex CLI on ChatGPT.
 There are no hand-classified references yet: compare models with each other and inspect overlays.
 
     .venv/bin/python -m scripts.census_classify run DSC01790 "wpt 103" --models gpt-6-astra:high gpt-5.6-sol:high
@@ -15,7 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import fcntl
 import json
+import os
 import time
 import uuid
 from collections import Counter
@@ -27,6 +30,7 @@ from PIL import Image, ImageDraw
 from scripts.census_evals import BASE_DIR, DATASET_DIR, INFRA_ERRORS
 
 from wildlife_counter.classify import PROMPT, Classification
+from wildlife_counter.counting_claude import claude_exec, claude_turn
 from wildlife_counter.counting_codex import codex_exec
 
 OUT_DIR = BASE_DIR / 'storage' / 'output' / 'classes'
@@ -69,14 +73,33 @@ async def classify_once(stem: str, model: str, effort: str, batch_size: int) -> 
         'effort': effort,
         'batch_size': batch_size,
         'animals': len(c.points),
-        'gen_ai.system': 'openai',
+        'gen_ai.system': 'anthropic' if model.startswith('claude') else 'openai',
         'gen_ai.request.model': model,
     }
     with logfire.span('classify {image} with {model} ({effort}, batch {batch_size})', **attrs) as span:
         try:
-            code = await codex_exec(
-                run, work_dir, PROMPT, model, effort, 'wildlife_counter.classify_mcp', 'classify', on_event
-            )
+            if model.startswith('claude'):
+                # Claude runs on the subscription one at a time, machine-wide.
+                fd = await claude_turn()
+                try:
+                    code = await claude_exec(
+                        run,
+                        work_dir,
+                        PROMPT,
+                        'Classify every elk with the classify tools: get_batches first, finish when done.',
+                        model,
+                        effort,
+                        'wildlife_counter.classify_mcp',
+                        'classify',
+                        on_event,
+                    )
+                finally:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                    os.close(fd)
+            else:
+                code = await codex_exec(
+                    run, work_dir, PROMPT, model, effort, 'wildlife_counter.classify_mcp', 'classify', on_event
+                )
             if code and not run.get('error'):
                 run['error'] = f'Codex exited with code {code}'
         except Exception as exc:

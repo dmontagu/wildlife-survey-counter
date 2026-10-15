@@ -23,7 +23,7 @@ from wildlife_counter.counting_codex import cli_instructions, event_lines, resto
 _tracer = trace.get_tracer('wildlife_counter.counting_claude')
 
 
-async def _claude_turn() -> int:
+async def claude_turn() -> int:
     """Machine-wide lock: at most one Claude subscription run at a time, across every process."""
     path = settings.sandbox_work_dir / 'claude-subscription.lock'
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -37,7 +37,7 @@ async def _claude_turn() -> int:
 
 
 async def run_claude(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]]):
-    fd = await _claude_turn()
+    fd = await claude_turn()
     try:
         await _run_claude_span(run, census, persist)
     finally:
@@ -77,19 +77,67 @@ async def _run_claude_span(run: dict, census: Census, persist: Callable[[dict], 
 
 
 async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Awaitable[None]], model: str, effort: str):
+    write_source(census)
+
+    async def on_event(_: dict):
+        if (census.work_dir / 'ledger.json').exists():
+            try:
+                data = json.loads((census.work_dir / 'ledger.json').read_text())
+                run['regions_total'], run['regions_recorded'] = len(data['regions']), len(data['records'])
+                run['preview'] = census_preview(data)
+            except (ValueError, KeyError):
+                pass  # A tool may currently be writing the ledger.
+        await persist(run)
+
+    try:
+        code = await claude_exec(
+            run,
+            census.work_dir,
+            prompt_for(census.species),
+            cli_instructions(census),
+            model,
+            effort,
+            'wildlife_counter.counting_mcp',
+            'census',
+            on_event,
+        )
+        if code:
+            raise RuntimeError(run.get('error') or f'Claude exited with code {code}; see the local run log.')
+        if not (census.work_dir / 'ledger.json').exists():
+            raise RuntimeError(run.get('last_update') or 'Claude did not record any image regions.')
+        restore_ledger(census)
+    finally:
+        if (census.work_dir / 'ledger.json').exists():
+            restore_ledger(census)
+
+
+async def claude_exec(
+    run: dict,
+    work_dir: Path,
+    system_prompt: str,
+    user_prompt: str,
+    model: str,
+    effort: str,
+    mcp_module: str,
+    server: str,
+    on_event: Callable[[dict], Awaitable[None]],
+) -> int:
+    """Run `claude -p` on the Claude subscription with one local MCP server; returns the exit code.
+
+    Refuses API-key auth. Callers outside run_claude must hold the one-at-a-time lock (claude_turn).
+    """
     executable = shutil.which('claude')
     if not executable:
         raise RuntimeError('Install the Claude Code CLI and sign in with a Claude subscription.')
-    write_source(census)
     package_root = str(Path(__file__).resolve().parent.parent)
-    mcp_config = census.work_dir / 'mcp.json'
+    mcp_config = work_dir / 'mcp.json'
     mcp_config.write_text(
         json.dumps(
             {
                 'mcpServers': {
-                    'census': {
+                    server: {
                         'command': sys.executable,
-                        'args': ['-m', 'wildlife_counter.counting_mcp', str(census.work_dir)],
+                        'args': ['-m', mcp_module, str(work_dir)],
                         'env': {'PYTHONPATH': package_root},
                     }
                 }
@@ -119,15 +167,15 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
         '--tools',
         '',
         '--allowedTools',
-        'mcp__census__*',
+        f'mcp__{server}__*',
         '--system-prompt',
-        prompt_for(census.species),
+        system_prompt,
     ]
     run['billing'] = 'Claude subscription; API equivalent is informational, not an API charge.'
-    with (census.work_dir / 'claude-stderr.log').open('wb') as stderr:
+    with (work_dir / 'claude-stderr.log').open('wb') as stderr:
         proc = await asyncio.create_subprocess_exec(
             *args,
-            cwd=str(census.work_dir),
+            cwd=str(work_dir),
             env=environment,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
@@ -137,11 +185,11 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
         )
         try:
             assert proc.stdin is not None and proc.stdout is not None
-            proc.stdin.write(cli_instructions(census).encode())
+            proc.stdin.write(user_prompt.encode())
             await proc.stdin.drain()
             proc.stdin.close()
             tool_spans: dict[str, trace.Span] = {}
-            with (census.work_dir / 'claude-events.jsonl').open('wb') as events:
+            with (work_dir / 'claude-events.jsonl').open('wb') as events:
                 async for line in event_lines(proc.stdout):
                     events.write(line)
                     events.flush()
@@ -164,7 +212,7 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
                         if not isinstance(part, dict):
                             continue
                         if part.get('type') == 'tool_use':
-                            tool = str(part.get('name', '')).removeprefix('mcp__census__')
+                            tool = str(part.get('name', '')).removeprefix(f'mcp__{server}__')
                             run['progress'] = f'Reviewing image: {tool}'
                             arguments = json.dumps(part.get('input') or {})
                             tool_spans[part['id']] = _tracer.start_span(
@@ -200,20 +248,8 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
                         run['cost_basis'] = 'Claude list-price API equivalent; subscription usage is not an API bill.'
                         if event.get('is_error'):
                             run['error'] = str(event.get('result') or event.get('subtype') or 'Claude run failed')
-                    if (census.work_dir / 'ledger.json').exists():
-                        try:
-                            data = json.loads((census.work_dir / 'ledger.json').read_text())
-                            run['regions_total'], run['regions_recorded'] = len(data['regions']), len(data['records'])
-                            run['preview'] = census_preview(data)
-                        except (ValueError, KeyError):
-                            pass  # A tool may currently be writing the ledger.
-                    await persist(run)
-            code = await proc.wait()
-            if code:
-                raise RuntimeError(run.get('error') or f'Claude exited with code {code}; see the local run log.')
-            if not (census.work_dir / 'ledger.json').exists():
-                raise RuntimeError(run.get('last_update') or 'Claude did not record any image regions.')
-            restore_ledger(census)
+                    await on_event(event)
+            return await proc.wait()
         finally:
             if proc.returncode is None:
                 if os.name == 'posix':
@@ -228,5 +264,3 @@ async def _run_claude(run: dict, census: Census, persist: Callable[[dict], Await
                     else:
                         proc.kill()
                     await proc.wait()
-            if (census.work_dir / 'ledger.json').exists():
-                restore_ledger(census)
