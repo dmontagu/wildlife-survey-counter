@@ -330,3 +330,9 @@ describe('RENAME_IMAGE', () => {
     expect(reducer(before, { type: 'RENAME_IMAGE', displayName: 'x' })).toBe(before)
   })
 })
+
+describe('initial state', () => {
+  it('places new markers as unclassified until a reviewer or the AI chooses a class', () => {
+    expect(initialState.activeCategory).toBe('unclassified')
+  })
+})

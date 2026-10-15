@@ -65,7 +65,14 @@ export interface LabelCategoryOption {
   summaryKey: CategorySummaryKey
 }
 
-export const DEFAULT_CATEGORY: AnnotationCategory = 'cow'
+// New markers start unclassified: classifying is a deliberate reviewer (or AI) decision, never an implicit default.
+export const DEFAULT_CATEGORY: AnnotationCategory = 'unclassified'
+
+/**
+ * Saves from before classes existed stored `category: null`, and every shipped build since has shown those
+ * markers as cows (reviewers may have confirmed them as such), so they keep loading as cows.
+ */
+export const LEGACY_CATEGORY: AnnotationCategory = 'cow'
 
 /**
  * Single source of truth for elk classes. An entry here drives rendering, keyboard shortcuts, the E-cycle

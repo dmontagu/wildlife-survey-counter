@@ -11,16 +11,18 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, Header, HTTPException, UploadFile
 from fastapi.responses import Response
 from PIL import Image
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from pydantic_ai import CallToolsNode
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from wildlife_counter.agent import now_iso
+from wildlife_counter.classify import Classification
+from wildlife_counter.classify_run import estimate_animal_px, run_classification
 from wildlife_counter.config import settings
 from wildlife_counter.counting_agent import Census, annotation, census_preview, counting_agent, crop_image
 from wildlife_counter.db import get_db
@@ -30,6 +32,8 @@ router = APIRouter(prefix='/api/counting')
 tasks: dict[str, asyncio.Task] = {}
 worker = asyncio.Semaphore(1)
 TERMINAL = {'complete', 'error', 'cancelled', 'interrupted'}
+# Classification-only jobs share the table but never answer "is this image counted?".
+COUNT_RUNS_ONLY = "coalesce(json_extract(payload, '$.kind'), 'count') = 'count'"
 
 
 async def initialize():
@@ -213,6 +217,8 @@ async def execute_run(run: dict, census: Census):
             if not census.submitted:
                 raise RuntimeError('The agent ended without completing the spatial review. Partial work was retained.')
             run['annotations'], run['uncertain'] = census.output()
+            if run.get('classify'):
+                await classify_count(run, census.work_dir)
             run.update(
                 status='complete',
                 method_summary=census.summary,
@@ -232,8 +238,123 @@ async def execute_run(run: dict, census: Census):
         tasks.pop(run['id'], None)
 
 
-@router.post('/runs', status_code=202, dependencies=[Depends(enabled)])
-async def create_run(file: UploadFile, owner: Owner, force: bool = False):
+async def classify_count(run: dict, work_dir: Path):
+    """Second phase of a "count & classify" run: label the census's own points. Never fails the count."""
+    points = [dict(x=a['x'], y=a['y']) for a in run['annotations']]
+    if not points:
+        return
+    run.update(progress='Classifying elk', phase='classifying')
+    await save_run(run)
+    c = Classification(
+        Path(run['source_path']), work_dir / 'classify', run['width'], run['height'], points, estimate_animal_px(points)
+    )
+    classifier: dict = {'usage': {}, 'estimated_cost_usd': None}
+    ok = await run_classification(c, classifier, settings.classification_model, settings.classification_effort)
+    run['classification_cost_usd'] = classifier.get('estimated_cost_usd')
+    if run['classification_cost_usd'] is not None and run.get('estimated_cost_usd') is not None:
+        run['estimated_cost_usd'] = round(run['estimated_cost_usd'] + run['classification_cost_usd'], 6)
+    if not ok:
+        run['classification_error'] = (
+            classifier.get('error') or 'Classification did not finish; markers stay unclassified.'
+        )
+        return
+    for i, point in enumerate(run['annotations'], 1):
+        if i in c.labels:
+            point['category'] = c.labels[i]['cls']
+    run['classified'] = True
+
+
+class MarkerPoint(BaseModel):
+    id: int
+    x: float = Field(ge=0, allow_inf_nan=False)
+    y: float = Field(ge=0, allow_inf_nan=False)
+
+
+async def execute_classification(run: dict, c: Classification):
+    try:
+        async with worker:
+            run.update(status='running', progress='Classifying elk')
+            await save_run(run)
+            classifier: dict = {'usage': {}, 'estimated_cost_usd': None}
+            ok = await run_classification(c, classifier, run['model'], settings.classification_effort)
+            run['usage'], run['estimated_cost_usd'] = classifier['usage'], classifier['estimated_cost_usd']
+            if not ok:
+                raise RuntimeError(classifier.get('error') or 'Classification did not finish.')
+            ids = [point['id'] for point in run['points']]
+            run['classes'] = {str(ids[i - 1]): label['cls'] for i, label in c.labels.items()}
+            run.update(status='complete', progress='Classes ready', completed_at=now_iso())
+    except asyncio.CancelledError:
+        run.update(status='cancelled', completed_at=now_iso(), progress='Cancelled')
+    except Exception as exc:
+        run.update(status='error', error=str(exc), completed_at=now_iso(), progress='Classification did not finish')
+    finally:
+        await save_run(run)
+        tasks.pop(run['id'], None)
+
+
+@router.post('/classify', status_code=202, dependencies=[Depends(enabled)])
+async def create_classification(file: UploadFile, owner: Owner, points: Annotated[str, Form()]):
+    """Classify the markers currently on the canvas, including ones the reviewer added by hand.
+
+    `points` is a JSON list of {id, x, y} in original image pixels. The result's `classes` maps each
+    marker id to a class id from the labeling app; markers never become cows by default.
+    """
+    if settings.counting_runner != 'codex':
+        raise HTTPException(501, 'Classification runs on the subscription runner only.')
+    content, width, height, suffix = await read_image(file)
+    try:
+        markers = TypeAdapter(list[MarkerPoint]).validate_json(points)
+    except ValidationError as exc:
+        raise HTTPException(422, f'Invalid points: {exc.errors()[:3]}') from exc
+    if not 0 < len(markers) <= 5000:
+        raise HTTPException(422, 'Send between 1 and 5000 markers.')
+    if len({m.id for m in markers}) != len(markers):
+        raise HTTPException(422, 'Marker ids must be unique.')
+    if any(m.x >= width or m.y >= height for m in markers):
+        raise HTTPException(422, 'Every marker must lie inside the image.')
+    run_id = uuid.uuid4().hex
+    work_dir = (settings.sandbox_work_dir / f'classify-{run_id}').resolve()
+    work_dir.mkdir(parents=True)
+    source = work_dir / f'input{suffix}'
+    source.write_bytes(content)
+    image_hash = hashlib.sha256(content).hexdigest()
+    run = {
+        'id': run_id,
+        'kind': 'classify',
+        'owner_key': owner,
+        'image_filename': Path(file.filename or f'image{suffix}').name,
+        'image_sha256': image_hash,
+        'width': width,
+        'height': height,
+        'status': 'queued',
+        'started_at': now_iso(),
+        'model': settings.classification_model,
+        'runner': settings.counting_runner,
+        'points': [m.model_dump() for m in markers],
+        'classes': {},
+        'usage': {},
+        'estimated_cost_usd': None,
+        'progress': 'Waiting to classify',
+        'source_path': str(source),
+        'cost_basis': 'Standard API estimate; excludes hosting and taxes.',
+    }
+    xy = [dict(x=m.x, y=m.y) for m in markers]
+    c = Classification(source, work_dir, width, height, xy, estimate_animal_px(xy))
+    db = await get_db(settings.db_path)
+    try:
+        await db.execute(
+            'INSERT INTO census_runs (id, image_sha256, payload, owner_key) VALUES (?, ?, ?, ?)',
+            (run_id, image_hash, json.dumps(run), owner),
+        )
+        await db.commit()
+    finally:
+        await db.close()
+    tasks[run_id] = asyncio.create_task(execute_classification(run, c))
+    return public_run(run)
+
+
+async def read_image(file: UploadFile) -> tuple[bytes, int, int, str]:
+    """Validated upload bytes plus width, height and a file suffix for the stored copy."""
     content = await file.read(60 * 1024 * 1024 + 1)
     if len(content) > 60 * 1024 * 1024:
         raise HTTPException(413, 'Image exceeds 60 MB')
@@ -248,6 +369,12 @@ async def create_run(file: UploadFile, owner: Owner, force: bool = False):
             raise ValueError('Use a JPEG, PNG, or WebP image with at most 100 megapixels.')
     except Exception as exc:
         raise HTTPException(400, f'Invalid image: {exc}') from exc
+    return content, width, height, suffix
+
+
+@router.post('/runs', status_code=202, dependencies=[Depends(enabled)])
+async def create_run(file: UploadFile, owner: Owner, force: bool = False, classify: bool = False):
+    content, width, height, suffix = await read_image(file)
     image_hash = hashlib.sha256(content).hexdigest()
     db = await get_db(settings.db_path)
     try:
@@ -255,7 +382,8 @@ async def create_run(file: UploadFile, owner: Owner, force: bool = False):
         # Reuse active work even with force; only explicit force bypasses completed results.
         await db.execute('BEGIN IMMEDIATE')
         async with db.execute(
-            'SELECT payload FROM census_runs WHERE image_sha256=? AND owner_key=? '
+            'SELECT payload FROM census_runs WHERE image_sha256=? AND owner_key=? AND '
+            f'{COUNT_RUNS_ONLY} '
             "ORDER BY json_extract(payload, '$.started_at') DESC, rowid DESC",
             (image_hash, owner),
         ) as cursor:
@@ -291,6 +419,7 @@ async def create_run(file: UploadFile, owner: Owner, force: bool = False):
             'regions_recorded': 0,
             'source_path': str(source),
             'cost_basis': 'Standard API estimate; excludes hosting and taxes.',
+            'classify': classify,
         }
         census = Census(source, work_dir, width, height)
         run['preview'] = census_preview(census.snapshot())
@@ -314,7 +443,7 @@ async def list_runs(sha256: str, owner: Owner):
     db = await get_db(settings.db_path)
     try:
         async with db.execute(
-            'SELECT payload FROM census_runs WHERE image_sha256=? AND owner_key=? '
+            f'SELECT payload FROM census_runs WHERE image_sha256=? AND owner_key=? AND {COUNT_RUNS_ONLY} '
             "ORDER BY json_extract(payload, '$.started_at') DESC, rowid DESC",
             (sha256, owner),
         ) as cur:

@@ -1,4 +1,10 @@
-import { categoryOption, DEFAULT_CATEGORY, ELK_CATEGORY_OPTIONS, isAnnotationCategory } from '../config'
+import {
+  categoryOption,
+  DEFAULT_CATEGORY,
+  ELK_CATEGORY_OPTIONS,
+  isAnnotationCategory,
+  LEGACY_CATEGORY,
+} from '../config'
 import type {
   Annotation,
   AnnotationCategory,
@@ -23,7 +29,7 @@ function normalizeBbox(value: unknown): [number, number, number, number] | null 
 
 /**
  * Resolve the class of a raw (possibly legacy) annotation. Older saves used `category: null` to mean cow,
- * so null/missing/unknown values fall back to the default class rather than being rejected.
+ * so null/missing/unknown values fall back to the legacy class rather than being rejected.
  *
  * Order is most-specific-first, because the class names nest: "unclassified bull" contains "unclassified",
  * "brow-tined bull" and "spike bull" both contain "bull". Testing the generic word first would swallow them.
@@ -38,7 +44,7 @@ function inferCategory(raw: Record<string, unknown>): AnnotationCategory {
   if (label.includes('calf') || label.includes('calves')) return 'calf'
   if (label.includes('cow')) return 'cow'
   if (label.includes('unclassified')) return 'unclassified'
-  return DEFAULT_CATEGORY
+  return LEGACY_CATEGORY
 }
 
 export function normalizeAnnotation(raw: unknown, index = 0): Annotation {

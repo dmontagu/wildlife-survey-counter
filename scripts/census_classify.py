@@ -8,7 +8,8 @@ There are no hand-classified references yet: compare models with each other and 
     .venv/bin/python -m scripts.census_classify run DSC01790 "wpt 103" --models gpt-6-astra:high gpt-5.6-sol:high
     .venv/bin/python -m scripts.census_classify compare DSC01790
 
-Each model is MODEL:EFFORT[:bN] (bN = elk per batch, default 12). Output per run: an overlay at
+Each model is MODEL:EFFORT[:bN][:pxN][:zoom]: bN elk per batch (default 12), pxN on-screen elk size
+in batch views (default 110), zoom = must zoom every possible bull before deciding. Output per run: an overlay at
 storage/output/classes/<image>/<model>.jpg and the labels + cost in storage/output/classes/results.json.
 """
 
@@ -16,9 +17,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import fcntl
 import json
-import os
 import time
 import uuid
 from collections import Counter
@@ -29,9 +28,8 @@ import logfire
 from PIL import Image, ImageDraw
 from scripts.census_evals import BASE_DIR, DATASET_DIR, INFRA_ERRORS
 
-from wildlife_counter.classify import PROMPT, Classification
-from wildlife_counter.counting_claude import claude_exec, claude_turn
-from wildlife_counter.counting_codex import codex_exec
+from wildlife_counter.classify import Classification
+from wildlife_counter.classify_run import run_classification
 
 OUT_DIR = BASE_DIR / 'storage' / 'output' / 'classes'
 WORK_ROOT = BASE_DIR / 'storage' / 'sandbox' / 'classify'
@@ -47,10 +45,13 @@ COLORS = {
 }
 
 
-async def classify_once(stem: str, model: str, effort: str, batch_size: int) -> dict[str, Any]:
+async def classify_once(
+    stem: str, model: str, effort: str, batch_size: int, display_px: int = 110, zoom: bool = False
+) -> dict[str, Any]:
     ref = json.loads((DATASET_DIR / f'{stem}.json').read_text())
     run_id = uuid.uuid4().hex
-    work_dir = (WORK_ROOT / f'{stem}-{model}-{effort}-b{batch_size}-{run_id[:8]}').resolve()
+    variant = variant_label(batch_size, display_px, zoom)
+    work_dir = (WORK_ROOT / f'{stem}-{model}-{effort}-{variant}-{run_id[:8]}').resolve()
     c = Classification(
         BASE_DIR / ref['image']['path'],
         work_dir,
@@ -59,76 +60,27 @@ async def classify_once(stem: str, model: str, effort: str, batch_size: int) -> 
         [dict(x=p['x'], y=p['y']) for p in ref['points']],
         ref['animal_size_px'],
         batch_size,
+        display_px,
+        zoom,
     )
-    c.write_source()
     run: dict[str, Any] = dict(id=run_id, model=model, reasoning_effort=effort, usage={}, estimated_cost_usd=None)
-
-    async def on_event(_: dict):
-        pass
-
     started = time.monotonic()
-    attrs: dict[str, Any] = {
-        'image': stem,
-        'model': model,
-        'effort': effort,
-        'batch_size': batch_size,
-        'animals': len(c.points),
-        'gen_ai.system': 'anthropic' if model.startswith('claude') else 'openai',
-        'gen_ai.request.model': model,
-    }
-    with logfire.span('classify {image} with {model} ({effort}, batch {batch_size})', **attrs) as span:
-        try:
-            if model.startswith('claude'):
-                # Claude runs on the subscription one at a time, machine-wide.
-                fd = await claude_turn()
-                try:
-                    code = await claude_exec(
-                        run,
-                        work_dir,
-                        PROMPT,
-                        'Classify every elk with the classify tools: get_batches first, finish when done.',
-                        model,
-                        effort,
-                        'wildlife_counter.classify_mcp',
-                        'classify',
-                        on_event,
-                    )
-                finally:
-                    fcntl.flock(fd, fcntl.LOCK_UN)
-                    os.close(fd)
-            else:
-                code = await codex_exec(
-                    run, work_dir, PROMPT, model, effort, 'wildlife_counter.classify_mcp', 'classify', on_event
-                )
-            if code and not run.get('error'):
-                run['error'] = f'Codex exited with code {code}'
-        except Exception as exc:
-            run['error'] = str(exc)
-        c.load()
-        usage = run.get('usage') or {}
-        span.set_attributes(
-            {
-                'gen_ai.usage.input_tokens': usage.get('input_tokens', 0),
-                'gen_ai.usage.output_tokens': usage.get('output_tokens', 0),
-                'completed': c.submitted,
-                'tool_calls': run.get('tool_calls', 0),
-            }
-        )
-        if run.get('estimated_cost_usd') is not None:
-            span.set_attribute('operation.cost', run['estimated_cost_usd'])
+    with logfire.span('classify {image} ({variant})', image=stem, variant=variant):
+        await run_classification(c, run, model, effort)
     labels = {str(k): v['cls'] for k, v in c.labels.items()}
     return dict(
         image=stem,
         model=model,
         effort=effort,
         batch_size=batch_size,
+        variant=variant,
         run_id=run_id,
         completed=c.submitted,
         animals=len(c.points),
         labels=labels,
         by_class=dict(Counter(labels.values())),
         cost_usd=run.get('estimated_cost_usd'),
-        usage=usage,
+        usage=run.get('usage') or {},
         tool_calls=run.get('tool_calls', 0),
         seconds=round(time.monotonic() - started),
         error=None if c.submitted else run.get('error') or run.get('last_update'),
@@ -136,10 +88,16 @@ async def classify_once(stem: str, model: str, effort: str, batch_size: int) -> 
     )
 
 
+def variant_label(batch_size: int, display_px: int, zoom: bool) -> str:
+    return f'b{batch_size}' + ('' if display_px == 110 else f'-px{display_px}') + ('-zoom' if zoom else '')
+
+
 async def classify(stem: str, spec: str, retries: int = 2) -> dict[str, Any]:
     model, effort, *rest = spec.split(':')
-    batch_size = int(rest[0][1:]) if rest else 12
-    result = await classify_once(stem, model, effort, batch_size)
+    batch_size = next((int(t[1:]) for t in rest if t.startswith('b')), 12)
+    display_px = next((int(t[2:]) for t in rest if t.startswith('px')), 110)
+    zoom = 'zoom' in rest
+    result = await classify_once(stem, model, effort, batch_size, display_px, zoom)
     for _ in range(retries):
         error = str(result['error'])
         throttled = '429' in error or 'Too Many Requests' in error
@@ -147,7 +105,7 @@ async def classify(stem: str, spec: str, retries: int = 2) -> dict[str, Any]:
             break
         if throttled:
             await asyncio.sleep(90)  # subscription rate limit: back off before retrying
-        result = await classify_once(stem, model, effort, batch_size)
+        result = await classify_once(stem, model, effort, batch_size, display_px, zoom)
     render(result)
     print(
         f'{stem} {spec}: {result["by_class"]} ${result["cost_usd"]} {result["seconds"]}s'
@@ -171,7 +129,9 @@ def render(result: dict) -> Path:
         draw.ellipse((x - r, y - r, x + r, y + r), outline=color, width=max(3, r // 3))
     counts = ', '.join(f'{k} {v}' for k, v in sorted(result['by_class'].items(), key=lambda kv: -kv[1]))
     cost = f'${result["cost_usd"]:.2f}' if result['cost_usd'] is not None else 'cost n/a'
-    title = f'{result["image"]} | {result["model"]} {result["effort"]} b{result["batch_size"]} | {counts} | {cost}'
+    title = (
+        f'{result["image"]} | {result["model"]} {result["effort"]} {result.get("variant", "b12")} | {counts} | {cost}'
+    )
     legend = '   '.join(f'{k}' for k in COLORS)
     bar = 92
     out_im = Image.new('RGB', (canvas.width, canvas.height + bar), 'black')
@@ -184,7 +144,7 @@ def render(result: dict) -> Path:
         d.text((x + 30, 52), k, fill=color, font_size=26)
         x += 60 + 15 * len(k)
     _ = legend
-    out = OUT_DIR / result['image'] / f'{result["model"]}-{result["effort"]}-b{result["batch_size"]}.jpg'
+    out = OUT_DIR / result['image'] / f'{result["model"]}-{result["effort"]}-{result.get("variant", "b12")}.jpg'
     out.parent.mkdir(parents=True, exist_ok=True)
     out_im.save(out, quality=90)
     return out
@@ -211,7 +171,7 @@ def compare(images: list[str]) -> None:
     for image, rs in sorted(by_image.items()):
         print(f'\n== {image} ({rs[0]["animals"]} elk)')
         for r in rs:
-            name = f'{r["model"]} {r["effort"]} b{r["batch_size"]}'
+            name = f'{r["model"]} {r["effort"]} {r.get("variant", "b12")}'
             cost = f'${r["cost_usd"]:.2f}' if r['cost_usd'] is not None else 'n/a'
             print(f'  {name:34} {cost:>7} {r["seconds"]:>5}s  {dict(sorted(r["by_class"].items()))}')
         base = next((r for r in rs if r['model'] == 'gpt-6-astra' and r['effort'] == 'high'), None)
@@ -220,7 +180,7 @@ def compare(images: list[str]) -> None:
                 if r is base:
                     continue
                 same = sum(r['labels'].get(k) == v for k, v in base['labels'].items())
-                name = f'{r["model"]} {r["effort"]} b{r["batch_size"]}'
+                name = f'{r["model"]} {r["effort"]} {r.get("variant", "b12")}'
                 print(f'  agreement {name} vs astra high: {same / len(base["labels"]):.0%}')
 
 
@@ -229,7 +189,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest='command', required=True)
     r = sub.add_parser('run')
     r.add_argument('images', nargs='+')
-    r.add_argument('--models', nargs='+', required=True, help='MODEL:EFFORT[:bN]')
+    r.add_argument('--models', nargs='+', required=True, help='MODEL:EFFORT[:bN][:pxN][:zoom]')
     r.add_argument('--concurrency', type=int, default=4)
     c = sub.add_parser('compare')
     c.add_argument('images', nargs='*')

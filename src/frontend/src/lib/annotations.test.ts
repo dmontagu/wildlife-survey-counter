@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CATEGORY, ELK_CATEGORY_OPTIONS } from '../config'
+import { ELK_CATEGORY_OPTIONS, LEGACY_CATEGORY } from '../config'
 import type { Annotation } from '../types'
 import {
   emptyCategoryCounts,
@@ -101,7 +101,7 @@ describe('normalizeAnnotations', () => {
 describe('normalizeAnnotation legacy shapes', () => {
   it('upgrades the pre-class shape, where a null category meant cow', () => {
     const legacy = { id: 1, x: 10, y: 20, category: null, label: 'elk', state: 'confirmed' }
-    expect(normalizeAnnotation(legacy).category).toBe(DEFAULT_CATEGORY)
+    expect(normalizeAnnotation(legacy).category).toBe(LEGACY_CATEGORY)
   })
 
   it('recovers the class from a label when the category field is missing', () => {
@@ -117,7 +117,7 @@ describe('normalizeAnnotation legacy shapes', () => {
       ['unclassified antlerless', 'unclassified-antlerless'],
       ['unclassified', 'unclassified'],
       ['unclassified elk', 'unclassified'],
-      ['elk', DEFAULT_CATEGORY],
+      ['elk', LEGACY_CATEGORY],
     ]
 
     for (const [label, expected] of cases) {
@@ -127,7 +127,7 @@ describe('normalizeAnnotation legacy shapes', () => {
 
   it('defaults an unknown class to cow rather than discarding the annotation', () => {
     const result = normalizeAnnotation({ id: 1, x: 5, y: 6, category: 'moose' })
-    expect(result).toMatchObject({ id: 1, x: 5, y: 6, category: DEFAULT_CATEGORY })
+    expect(result).toMatchObject({ id: 1, x: 5, y: 6, category: LEGACY_CATEGORY })
   })
 
   it('treats an annotation with no review status as already reviewed', () => {
@@ -251,12 +251,12 @@ describe('summarizeAnnotations', () => {
 
 describe('formatCountSummary', () => {
   it('shows the total alone when everything is the default class', () => {
-    expect(formatCountSummary({ ...emptyCategoryCounts(), counted: 12, cows: 12 })).toBe('12 counted')
+    expect(formatCountSummary({ ...emptyCategoryCounts(), counted: 12, unclassified: 12 })).toBe('12 counted')
   })
 
   it('appends only the classes that are actually present', () => {
-    expect(formatCountSummary({ ...emptyCategoryCounts(), counted: 16, cows: 12, bulls: 3, unclassified: 1 })).toBe(
-      '16 counted, 3 unclassified bulls, 1 unclassified',
+    expect(formatCountSummary({ ...emptyCategoryCounts(), counted: 16, unclassified: 12, bulls: 3, cows: 1 })).toBe(
+      '16 counted, 3 unclassified bulls, 1 cows',
     )
   })
 
@@ -264,12 +264,12 @@ describe('formatCountSummary', () => {
     const line = formatCountSummary({
       ...emptyCategoryCounts(),
       counted: 40,
-      cows: 20,
+      unclassified: 20,
       calves: 8,
       spikes: 6,
       browTinedBulls: 4,
       bulls: 1,
-      unclassified: 1,
+      cows: 1,
     })
 
     expect(line).toBe('40 counted, 8 calves, 6 spike bulls, 4 brow-tined bulls, +2 more')

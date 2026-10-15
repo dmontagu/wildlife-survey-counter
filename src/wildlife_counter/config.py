@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     counting_model: str = 'openai-responses:gpt-6-astra'
     counting_request_limit: int = 200
     counting_output_token_limit: int = 100_000
+    # Elk classification (cow/calf/spike/brow-tined/...) after counting; runs on the same subscription runner.
+    classification_model: str = 'gpt-6-astra'
+    classification_effort: str = 'high'
     counting_weights: Path = _PROJECT_ROOT / 'runs/detect/storage/models/runs/elk_yolo11s_v4/weights/best.pt'
     port: int = 8100
     host: str = '0.0.0.0'

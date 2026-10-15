@@ -65,6 +65,9 @@ class Classification:
     points: list[dict]
     animal_px: float
     batch_size: int = 12
+    # Method knobs: on-screen elk size in batch views, and whether possible bulls must be zoomed.
+    display_px: int = 110
+    zoom: bool = False
     viewed: set[str] = field(default_factory=set)
     labels: dict[int, dict] = field(default_factory=dict)
     recorded: set[str] = field(default_factory=set)
@@ -77,8 +80,8 @@ class Classification:
 
     @property
     def scale(self) -> float:
-        """Show an elk at ~110px (antlers need detail): magnify small elk up to 6x, shrink large ones to 0.5x."""
-        return min(6.0, max(0.5, 110 / max(1.0, self.animal_px)))
+        """Show an elk at ~display_px (antlers need detail): magnify small elk up to 6x, shrink to 0.25x."""
+        return min(6.0, max(0.25, self.display_px / max(1.0, self.animal_px)))
 
     def batches(self) -> dict[str, list[int]]:
         # Group by source tiles small enough that a magnified crop stays under ~1800px, then chunk.
@@ -162,6 +165,8 @@ class Classification:
                     points=self.points,
                     animal_px=self.animal_px,
                     batch_size=self.batch_size,
+                    display_px=self.display_px,
+                    zoom=self.zoom,
                 )
             )
         )
@@ -177,6 +182,8 @@ class Classification:
             cfg['points'],
             cfg['animal_px'],
             cfg['batch_size'],
+            cfg.get('display_px', 110),
+            cfg.get('zoom', False),
         )
         c.load()
         return c
@@ -240,3 +247,14 @@ def finish(c: Classification, summary: str) -> dict:
     for lab in c.labels.values():
         counts[lab['cls']] = counts.get(lab['cls'], 0) + 1
     return {'classified': len(c.labels), 'by_class': counts}
+
+
+ZOOM_RULE = """
+Zoom rule: before recording a batch, call view_animal for EVERY elk in it whose head is visible and
+that could plausibly carry antlers, including thin spikes against a busy background and bedded
+animals. Decide spike vs brow-tined only from the zoomed view. Do not zoom clearly antlerless elk.
+"""
+
+
+def prompt_for(zoom: bool) -> str:
+    return PROMPT + ZOOM_RULE if zoom else PROMPT
