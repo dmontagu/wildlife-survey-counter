@@ -121,6 +121,14 @@ for each known run. This only attaches the saved results; it never runs the mode
 or transfers counts already owned by another profile.
 
 
+**Classifying elk.** The **Count elk ▾** menu offers **Count & classify**, which counts and then labels
+each elk as cow, calf, spike bull, brow-tined bull, or an unclassified group; **Classify elk** labels the
+markers currently on the canvas, including ones you added by hand. Classes arrive as unconfirmed
+suggestions in one undoable step, and a class you already chose is never changed. Classification uses
+`gpt-6-astra` at high effort (`WSC_CLASSIFICATION_MODEL`, `WSC_CLASSIFICATION_EFFORT`) and costs roughly
+$0.70–1 API-equivalent per photo of 60–100 elk. It is only meaningful where elk are large enough to see
+antlers; there are no hand-checked class references yet. New markers start unclassified.
+
 The counter uses bounded native image/crop/detector tools through a local MCP
 server, with disjoint region ownership and completion checks. It does not need
 Monty or agent-authored Python for this first implementation. Native inference

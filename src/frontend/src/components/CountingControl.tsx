@@ -370,6 +370,7 @@ export default function CountingControl() {
               : 'Estimated API cost for this run, based on reported token usage.'
           } This amount belongs to the original run. Reusing saved labels starts no new analysis.`}
         >
+          {classification ? 'Classifying: ' : ''}
           {formattedCost} {subscription ? 'API equivalent (est.)' : 'estimated cost'}
         </output>
       )}
