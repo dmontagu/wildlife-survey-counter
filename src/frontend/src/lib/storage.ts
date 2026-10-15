@@ -2,6 +2,11 @@ export const LS_IMAGE_KEY = 'wsc:image'
 export const LS_IMAGE_BASE_KEY = 'wsc:image-base'
 export const LS_IMAGE_DISPLAY_NAME_KEY = 'wsc:image-display-name'
 export const LS_ACTIVE_CATEGORY_KEY = 'wsc:active-category'
+/**
+ * Set once the saved active class has been upgraded to the unclassified default. Builds before it saved
+ * their 'cow' default automatically, so a stored 'cow' without this marker is reset to unclassified once.
+ */
+export const LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY = 'wsc:active-category:unclassified-default'
 export const LS_BBOX_CREATION_KEY = 'wsc:bbox-creation-enabled'
 export const LS_MARKER_VISIBILITY_KEY = 'wsc:marker-visibility'
 export const LS_ZOOM_SPEED_KEY = 'wsc:zoom-speed'

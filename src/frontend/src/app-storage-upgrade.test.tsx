@@ -275,3 +275,33 @@ describe('recent work written by an earlier build', () => {
     expect(storedAnnotations()).toHaveLength(1)
   })
 })
+
+describe('the active class saved by builds that defaulted new markers to cow', () => {
+  const KEY = 'wsc:active-category'
+  const MARKER = 'wsc:active-category:unclassified-default'
+
+  it('starts new markers unclassified once, since those builds saved cow without being asked', async () => {
+    stubImageLoading()
+    localStorage.setItem(KEY, 'cow')
+    renderApp('/')
+    await waitFor(() => expect(localStorage.getItem(KEY)).toBe('unclassified'))
+    expect(localStorage.getItem(MARKER)).toBe('1')
+  })
+
+  it('keeps any other class the reviewer chose', async () => {
+    stubImageLoading()
+    localStorage.setItem(KEY, 'spike')
+    renderApp('/')
+    await wait(PAST_THE_AUTOSAVE)
+    expect(localStorage.getItem(KEY)).toBe('spike')
+  })
+
+  it('keeps cow when it was chosen after the upgrade', async () => {
+    stubImageLoading()
+    localStorage.setItem(KEY, 'cow')
+    localStorage.setItem(MARKER, '1')
+    renderApp('/')
+    await wait(PAST_THE_AUTOSAVE)
+    expect(localStorage.getItem(KEY)).toBe('cow')
+  })
+})

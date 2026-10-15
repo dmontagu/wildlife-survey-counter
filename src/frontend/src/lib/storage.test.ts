@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   annotationsStorageKey,
   imageStorageId,
+  LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY,
   LS_ACTIVE_CATEGORY_KEY,
   LS_BBOX_CREATION_KEY,
   LS_IMAGE_BASE_KEY,
@@ -33,6 +34,7 @@ describe('storage keys', () => {
       LS_IMAGE_BASE_KEY,
       LS_IMAGE_DISPLAY_NAME_KEY,
       LS_ACTIVE_CATEGORY_KEY,
+      LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY,
       LS_BBOX_CREATION_KEY,
       LS_MARKER_VISIBILITY_KEY,
       LS_ZOOM_SPEED_KEY,
@@ -43,6 +45,7 @@ describe('storage keys', () => {
       LS_IMAGE_BASE_KEY: 'wsc:image-base',
       LS_IMAGE_DISPLAY_NAME_KEY: 'wsc:image-display-name',
       LS_ACTIVE_CATEGORY_KEY: 'wsc:active-category',
+      LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY: 'wsc:active-category:unclassified-default',
       LS_BBOX_CREATION_KEY: 'wsc:bbox-creation-enabled',
       LS_MARKER_VISIBILITY_KEY: 'wsc:marker-visibility',
       LS_ZOOM_SPEED_KEY: 'wsc:zoom-speed',

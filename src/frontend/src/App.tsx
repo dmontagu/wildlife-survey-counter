@@ -50,6 +50,7 @@ import { stripImageMetadata } from './lib/images'
 import { readRecentImages, removeRecentImage, sortRecentImages, upsertRecentImage } from './lib/recent-images'
 import {
   annotationsStorageKey,
+  LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY,
   LS_ACTIVE_CATEGORY_KEY,
   LS_BBOX_CREATION_KEY,
   LS_IMAGE_BASE_KEY,
@@ -574,7 +575,10 @@ export default function App() {
     }
 
     const savedCategory = safeGetItem(LS_ACTIVE_CATEGORY_KEY)
-    if (isAnnotationCategory(savedCategory)) {
+    // Older builds wrote their 'cow' default without the reviewer choosing it; start those unclassified once.
+    const upgraded = safeGetItem(LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY) !== null
+    if (!upgraded) safeSetItem(LS_ACTIVE_CATEGORY_DEFAULT_UPGRADE_KEY, '1')
+    if (isAnnotationCategory(savedCategory) && (upgraded || savedCategory !== 'cow')) {
       dispatch({ type: 'SET_ACTIVE_CATEGORY', category: savedCategory })
     }
 

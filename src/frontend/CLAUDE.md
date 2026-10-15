@@ -76,6 +76,13 @@ Request metadata (`wsc:ai-count-request:<image id>`, version 1) stores a run id 
 the initial annotation snapshot. A separate `wsc:ai-count-applied:<image id>` receipt
 is written by App only after saving annotations. Undo retains the receipt, so revisiting
 an image cannot resurrect an undone result. Annotation JSON stays in its existing format.
+The Count elk split button also offers **Count & classify**, which runs the census and then classifies its
+points on the server; classes arrive in each marker's `category`. **Classify elk** sends every non-rejected,
+still-unclassified marker (including hand-added ones) to `POST /api/counting/classify` and applies the returned
+classes through `APPLY_AI_CLASSES`: one undoable step that only fills in `unclassified` markers, as unconfirmed
+suggestions, never overwriting a class a reviewer chose. New markers default to `unclassified`
+(`DEFAULT_CATEGORY`); saves from before classes existed still load as cows (`LEGACY_CATEGORY`), and a saved
+`cow` active class from the old default is reset once (`wsc:active-category:unclassified-default`).
 `VITE_AI_COUNTING=true` enables the button in a production build; it is shown by
 default in development and disabled in general app tests. The backend must also
 enable counting. See root README.md for the local Codex subscription setup.
