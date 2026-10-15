@@ -312,3 +312,40 @@ describe('background AI counting', () => {
     ).toBe(current)
   })
 })
+
+describe('AI classification', () => {
+  it('classifies unclassified markers by id and leaves reviewer classes alone', async () => {
+    const run = fixture()
+    run.annotations = [annotation({ id: 1, category: 'unclassified' }), annotation({ id: 2, category: 'cow' })]
+    let posted: FormData | null = null
+    let polls = 0
+    vi.mocked(countingRequest).mockImplementation(async (path, init) => {
+      if (path === 'capabilities') return { enabled: true }
+      if (path.startsWith('runs?')) return [run]
+      if (path === 'classify') {
+        posted = init?.body as FormData
+        return { id: 'cls1', kind: 'classify', status: 'running', classes: {}, image_sha256: 'hash' }
+      }
+      if (path === 'runs/cls1') {
+        polls += 1
+        return { id: 'cls1', kind: 'classify', status: 'complete', classes: { '1': 'spike', '2': 'calf' } }
+      }
+      return run
+    })
+    const user = userEvent.setup()
+    renderApp(route)
+    await waitFor(() => expect(totalCounted()).toBe('2'))
+    await user.click(await screen.findByRole('button', { name: 'Classify elk' }))
+    await screen.findByText('Classifying elk…')
+    expect(JSON.parse(String((posted as FormData | null)?.get('points')))).toEqual([{ id: 1, x: 100, y: 200 }])
+    await screen.findByText('AI classes added · review on image', undefined, { timeout: 5000 })
+    expect(polls).toBeGreaterThan(0)
+    const key = annotationsStorageKey(image.filename, image.basePath)
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem(key) ?? '[]').map((p: { category: string }) => p.category)).toEqual([
+        'spike',
+        'cow',
+      ]),
+    )
+  })
+})

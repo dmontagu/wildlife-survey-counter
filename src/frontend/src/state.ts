@@ -304,6 +304,38 @@ export function reducer(state: AppState, action: Action): AppState {
       }
     }
 
+    case 'APPLY_AI_CLASSES': {
+      if (!state.image || imageStorageId(state.image.filename, state.image.basePath) !== action.imageId) return state
+      // AI classes only fill in markers nobody has classified yet; a reviewer's class is never overwritten.
+      // Each change becomes an unconfirmed suggestion to review, applied as one undoable step.
+      const patches: AnnotationPatch[] = state.annotations
+        .filter((annotation) => {
+          const next = action.classes[String(annotation.id)]
+          return (
+            next !== undefined &&
+            next !== 'unclassified' &&
+            annotation.category === 'unclassified' &&
+            annotation.state !== 'rejected'
+          )
+        })
+        .map((annotation) => ({
+          id: annotation.id,
+          before: { category: annotation.category, reviewStatus: annotation.reviewStatus },
+          after: { category: action.classes[String(annotation.id)], reviewStatus: 'unconfirmed' as const },
+        }))
+      if (patches.length === 0) return state
+      const changed = new Map(patches.map((patch) => [patch.id, patch.after]))
+      return {
+        ...state,
+        annotations: state.annotations.map((annotation) => {
+          const after = changed.get(annotation.id)
+          return after ? { ...annotation, ...after } : annotation
+        }),
+        undoStack: [...state.undoStack, { description: `AI classes for ${patches.length} marker(s)`, patches }],
+        redoStack: [],
+      }
+    }
+
     case 'SET_CATEGORY': {
       const ids = new Set(action.ids)
       const patches: AnnotationPatch[] = state.annotations

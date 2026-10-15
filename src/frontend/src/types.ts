@@ -123,6 +123,7 @@ export type Action =
   | { type: 'SET_COUNTING_PREVIEW'; imageId: string; preview: CountingPreview | null }
   | { type: 'REQUEST_AI_COUNT'; imageId: string }
   | { type: 'APPLY_AI_COUNT'; imageId: string; runId: string; baseline: string; annotations: Annotation[] }
+  | { type: 'APPLY_AI_CLASSES'; imageId: string; classes: Record<string, AnnotationCategory> }
   | { type: 'LOAD_IMAGE'; image: ImageInfo }
   | { type: 'LOAD_ANNOTATIONS'; annotations: Annotation[] }
   | { type: 'IMPORT_ANNOTATIONS'; annotations: Annotation[] }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { imageStorageId } from './lib/storage'
 import { initialState, reducer } from './state'
 import { annotation, annotations } from './tests/helpers'
 import type { Annotation, AppState, ImageInfo } from './types'
@@ -334,5 +335,41 @@ describe('RENAME_IMAGE', () => {
 describe('initial state', () => {
   it('places new markers as unclassified until a reviewer or the AI chooses a class', () => {
     expect(initialState.activeCategory).toBe('unclassified')
+  })
+})
+
+describe('APPLY_AI_CLASSES', () => {
+  const loaded = (): AppState => ({
+    ...initialState,
+    image,
+    annotations: [
+      annotation({ id: 1, category: 'unclassified', reviewStatus: 'confirmed', state: 'manually-added' }),
+      annotation({ id: 2, category: 'cow', reviewStatus: 'confirmed' }),
+      annotation({ id: 3, category: 'unclassified', state: 'rejected' }),
+      annotation({ id: 4, category: 'unclassified', reviewStatus: 'unconfirmed' }),
+    ],
+  })
+  const imageId = imageStorageId(image.filename, image.basePath)
+
+  it('fills in only unclassified markers, as unconfirmed suggestions, in one undo step', () => {
+    const before = loaded()
+    const after = reducer(before, {
+      type: 'APPLY_AI_CLASSES',
+      imageId,
+      classes: { '1': 'spike', '2': 'calf', '3': 'cow', '4': 'unclassified' },
+    })
+    expect(after.annotations.map((a) => [a.id, a.category, a.reviewStatus])).toEqual([
+      [1, 'spike', 'unconfirmed'],
+      [2, 'cow', 'confirmed'],
+      [3, 'unclassified', before.annotations[2]?.reviewStatus],
+      [4, 'unclassified', 'unconfirmed'],
+    ])
+    expect(after.undoStack).toHaveLength(1)
+    expect(reducer(after, { type: 'UNDO' }).annotations).toEqual(before.annotations)
+  })
+
+  it('ignores results for another image', () => {
+    const before = loaded()
+    expect(reducer(before, { type: 'APPLY_AI_CLASSES', imageId: 'other', classes: { '1': 'cow' } })).toBe(before)
   })
 })

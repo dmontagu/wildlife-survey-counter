@@ -1,8 +1,10 @@
-import { LoaderCircleIcon, ScanSearchIcon, XIcon } from 'lucide-react'
+import { ChevronDownIcon, LoaderCircleIcon, ScanSearchIcon, TagsIcon, XIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
   assertMatchingRun,
+  type ClassificationRun,
   type CountingRun,
+  classificationClasses,
   countingAnnotations,
   countingAppliedKey,
   countingImage,
@@ -16,6 +18,7 @@ import {
 import { imageStorageId, safeGetItem } from '../lib/storage'
 import { useAppState, useDispatch } from '../state'
 import { Button } from './ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 
 export default function CountingControl() {
   const state = useAppState()
@@ -30,6 +33,8 @@ export default function CountingControl() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [baseline, setBaseline] = useState<{ runId: string; annotations: string } | null>(null)
+  const [classifyJob, setClassifyJob] = useState<{ identity: string; run: ClassificationRun } | null>(null)
+  const classification = classifyJob?.identity === identity ? classifyJob.run : null
   const run = result?.identity === identity ? result.run : null
   const currentSource = source?.identity === identity ? source : null
   const isCurrent = () =>
@@ -133,7 +138,7 @@ export default function CountingControl() {
     }
   }, [image, run, currentSource, delivered, needsReview, identity, expected, dispatch])
 
-  async function start() {
+  async function start(classify = false) {
     if (!image || busy || run?.status === 'complete' || (run && isCounting(run))) return
     discovery.current += 1
     dispatch({ type: 'REQUEST_AI_COUNT', imageId: identity })
@@ -152,7 +157,7 @@ export default function CountingControl() {
         if (!capabilities.enabled) throw new Error('AI counting is unavailable on this server.')
         const body = new FormData()
         body.append('file', file.file, image.filename)
-        next = await countingRequest<CountingRun>('runs', { method: 'POST', body })
+        next = await countingRequest<CountingRun>(classify ? 'runs?classify=true' : 'runs', { method: 'POST', body })
         // Another tab may have finished between lookup and POST. Preserve existing markers.
         if (next.status === 'complete') snapshot = request?.runId === next.id ? request.baseline : '[]'
       }
@@ -161,6 +166,55 @@ export default function CountingControl() {
       setSource({ ...file, identity })
       setBaseline({ runId: next.id, annotations: snapshot })
       setResult({ identity, run: next })
+    } catch (err) {
+      if (isCurrent()) setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      if (isCurrent()) setBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!classification || !isCounting(classification)) return
+    let live = true
+    let timer: ReturnType<typeof setTimeout>
+    const poll = async () => {
+      try {
+        const next = await countingRequest<ClassificationRun>(`runs/${classification.id}`)
+        if (!live) return
+        setClassifyJob({ identity, run: next })
+        if (next.status === 'complete') {
+          dispatch({ type: 'APPLY_AI_CLASSES', imageId: identity, classes: classificationClasses(next) })
+        }
+      } catch {
+        if (live) setError('Reconnecting to classification…')
+      }
+      if (live) timer = setTimeout(poll, 2000)
+    }
+    timer = setTimeout(poll, 2000)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [identity, classification, dispatch])
+
+  /** Classify every marker that is still unclassified, including ones added by hand. */
+  async function classifyMarkers() {
+    if (!image || busy) return
+    const markers = latest.current.annotations.filter(
+      (point) => point.state !== 'rejected' && point.category === 'unclassified',
+    )
+    if (markers.length === 0) return
+    setBusy(true)
+    setError(null)
+    try {
+      const file = currentSource ?? (await countingImage(image))
+      const body = new FormData()
+      body.append('file', file.file, image.filename)
+      body.append('points', JSON.stringify(markers.map((point) => ({ id: point.id, x: point.x, y: point.y }))))
+      const next = await countingRequest<ClassificationRun>('classify', { method: 'POST', body })
+      if (!isCurrent()) return
+      setSource({ ...file, identity })
+      setClassifyJob({ identity, run: next })
     } catch (err) {
       if (isCurrent()) setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -198,7 +252,11 @@ export default function CountingControl() {
   }
 
   const running = !!run && isCounting(run)
-  const cost = run?.estimated_cost_usd
+  const classifying = !!classification && isCounting(classification)
+  const unclassifiedMarkers = state.annotations.filter(
+    (point) => point.state !== 'rejected' && point.category === 'unclassified',
+  ).length
+  const cost = classification?.estimated_cost_usd ?? run?.estimated_cost_usd
   const formattedCost =
     typeof cost === 'number' && Number.isFinite(cost) && cost >= 0
       ? cost > 0 && cost < 0.01
@@ -208,17 +266,19 @@ export default function CountingControl() {
   const subscription = run?.runner === 'codex'
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {running || busy ? (
+      {running || busy || classifying ? (
         <>
           <output className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <LoaderCircleIcon className="size-4 motion-safe:animate-spin" />
-            {busy
-              ? running
-                ? 'Cancelling count…'
-                : 'Starting count…'
-              : run
-                ? countingStatus(run)
-                : 'Starting count…'}
+            {classifying
+              ? 'Classifying elk…'
+              : busy
+                ? running
+                  ? 'Cancelling count…'
+                  : 'Starting…'
+                : run
+                  ? countingStatus(run)
+                  : 'Starting count…'}
           </output>
           {running && (
             <Button
@@ -233,19 +293,54 @@ export default function CountingControl() {
           )}
         </>
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void start()}
-          disabled={!image || run?.status === 'complete'}
-          title={
-            run?.status === 'complete'
-              ? 'This image already has a saved AI count. No new analysis is needed.'
-              : 'Reuse a saved count or count elk in the background. New counts can take several minutes.'
-          }
-        >
-          <ScanSearchIcon className="size-4" /> {run?.status === 'complete' ? 'Count saved' : 'Count elk'}
-        </Button>
+        <>
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className={run?.status === 'complete' ? undefined : 'rounded-r-none'}
+              onClick={() => void start()}
+              disabled={!image || run?.status === 'complete'}
+              title={
+                run?.status === 'complete'
+                  ? 'This image already has a saved AI count. No new analysis is needed.'
+                  : 'Reuse a saved count or count elk in the background. New counts can take several minutes.'
+              }
+            >
+              <ScanSearchIcon className="size-4" /> {run?.status === 'complete' ? 'Count saved' : 'Count elk'}
+            </Button>
+            {run?.status !== 'complete' && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-l-none border-l-0 px-2"
+                    aria-label="More AI counting options"
+                    disabled={!image}
+                  >
+                    <ChevronDownIcon className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem onSelect={() => void start(true)}>
+                    Count & classify (cow, calf, bull…)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          {unclassifiedMarkers > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void classifyMarkers()}
+              title={`Ask the AI to classify the ${unclassifiedMarkers} unclassified marker(s), including ones you added. Markers you already classified are never changed; AI classes arrive unconfirmed and can be undone.`}
+            >
+              <TagsIcon className="size-4" /> Classify elk
+            </Button>
+          )}
+        </>
       )}
       {!busy && !running && run && !error && (
         <output className="text-xs text-muted-foreground">
@@ -287,6 +382,17 @@ export default function CountingControl() {
         >
           Use AI labels
         </Button>
+      )}
+      {!classifying && classification?.status === 'complete' && (
+        <output className="text-xs text-muted-foreground">AI classes added · review on image</output>
+      )}
+      {!classifying && classification && ['error', 'cancelled', 'interrupted'].includes(classification.status) && (
+        <output className="text-xs text-muted-foreground">Classification stopped. Try again.</output>
+      )}
+      {!running && run?.classification_error && !classification && (
+        <output className="text-xs text-muted-foreground" title={run.classification_error}>
+          Classification did not finish · markers left unclassified
+        </output>
       )}
       {error && (
         <span role="alert" className="max-w-72 text-xs text-muted-foreground">

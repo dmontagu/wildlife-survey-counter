@@ -1,5 +1,5 @@
 import { isAnnotationCategory } from '../config'
-import type { Annotation, CountingPreview, ImageInfo } from '../types'
+import type { Annotation, AnnotationCategory, CountingPreview, ImageInfo } from '../types'
 import { normalizeAnnotations } from './annotations'
 import { getBrowserImageFromBasePath, isBrowserImageBasePath } from './browser-images'
 import { imageStorageId, safeGetItem, safeSetItem } from './storage'
@@ -33,9 +33,30 @@ export interface CountingRun {
   regions_recorded: number
   method_summary?: string
   error?: string
+  /** Count runs started with "Count & classify" classify their own points after counting. */
+  classify?: boolean
+  phase?: 'classifying'
+  classified?: boolean
+  classification_error?: string
+  classification_cost_usd?: number | null
 }
 
-export const isCounting = (run: CountingRun) => run.status === 'running' || run.status === 'queued'
+/** A classification-only job for the markers currently on the canvas, keyed back by marker id. */
+export interface ClassificationRun {
+  id: string
+  kind: 'classify'
+  image_sha256: string
+  width: number
+  height: number
+  status: CountingRun['status']
+  classes: Record<string, string>
+  estimated_cost_usd: number | null
+  runner?: 'codex' | 'api'
+  progress: string
+  error?: string
+}
+
+export const isCounting = (run: Pick<CountingRun, 'status'>) => run.status === 'running' || run.status === 'queued'
 
 /** History is newest first. A failed retry must never hide a completed result. */
 export function reusableCount(runs: CountingRun[]): CountingRun | undefined {
@@ -142,11 +163,24 @@ export function countingAnnotations(run: CountingRun): Annotation[] {
 export function countingStatus(run: CountingRun): string {
   if (run.status === 'queued') return 'Waiting to count…'
   if (run.status === 'running') {
+    if (run.phase === 'classifying') return 'Classifying elk…'
     if (run.preview?.phase === 'review') return 'Checking for missed or duplicate elk…'
     if (run.progress.includes('neighborhood') || run.progress.includes('finish')) return 'Checking labels…'
     return 'Counting elk…'
   }
-  if (run.status === 'complete') return `${countingAnnotations(run).length} AI markers ready`
+  if (run.status === 'complete') {
+    const ready = `${countingAnnotations(run).length} AI markers ready`
+    return run.classify && !run.classified ? `${ready} · not classified` : ready
+  }
   if (run.status === 'cancelled') return 'Count cancelled'
   return 'Counting stopped. Try again.'
+}
+
+/** Classes keyed by marker id, limited to the app's known classes. */
+export function classificationClasses(run: ClassificationRun): Record<string, AnnotationCategory> {
+  const classes: Record<string, AnnotationCategory> = {}
+  for (const [id, value] of Object.entries(run.classes)) {
+    if (isAnnotationCategory(value)) classes[id] = value
+  }
+  return classes
 }
